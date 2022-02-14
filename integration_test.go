@@ -18,6 +18,9 @@ import (
 )
 
 func TestWithQemu(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
 	t.Parallel()
 
 	wd, err := os.Getwd()
