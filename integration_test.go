@@ -2,10 +2,6 @@ package smart
 
 import (
 	"fmt"
-	"github.com/anatol/vmtest"
-	"github.com/stretchr/testify/require"
-	"github.com/tmc/scp"
-	"golang.org/x/crypto/ssh"
 	"log"
 	"os"
 	"os/exec"
@@ -14,9 +10,17 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/anatol/vmtest"
+	"github.com/stretchr/testify/require"
+	"github.com/tmc/scp"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestWithQemu(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
 	t.Parallel()
 
 	wd, err := os.Getwd()
