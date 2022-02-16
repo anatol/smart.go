@@ -1,9 +1,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/anatol/smart.go"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestOpen(t *testing.T) {

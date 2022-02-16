@@ -3,10 +3,11 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"github.com/anatol/smart.go"
-	"github.com/stretchr/testify/require"
 	"os/exec"
 	"testing"
+
+	"github.com/anatol/smart.go"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNVMe(t *testing.T) {

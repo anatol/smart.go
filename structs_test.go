@@ -1,9 +1,10 @@
 package smart
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"unsafe"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNvmeSizes(t *testing.T) {
