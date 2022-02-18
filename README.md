@@ -15,14 +15,13 @@ Here is an example of code that demonstrates the library usage.
 // skip the error handling for more compact API example
 dev, _ := smart.OpenNVMe("/dev/nvme0n1")
 c, nss, _ := dev.Identify()
-fmt.Println("Model number: ", string(bytes.TrimSpace(c.ModelNumber[:])))
-fmt.Println("Serial number: ", string(bytes.TrimSpace(c.SerialNumber[:])))
+fmt.Println("Model number: ", c.ModelNumber())
+fmt.Println("Serial number: ", c.SerialNumber())
 fmt.Println("Size: ", c.Tnvmcap.Val[0])
 
 // namespace #1
 ns := nss[0]
-lbaSize := uint64(1) << ns.Lbaf[ns.Flbas&0xf].Ds
-fmt.Println("Namespace 1 utilization: ", ns.Nuse*lbaSize)
+fmt.Println("Namespace 1 utilization: ", ns.Nuse*ns.LbaSize())
 
 sm, _ := dev.ReadSMART()
 fmt.Println("Temperature: ", sm.Temperature, "K")

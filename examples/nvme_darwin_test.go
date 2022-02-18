@@ -1,7 +1,6 @@
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 	"testing"
@@ -26,7 +25,7 @@ func TestNVMe(t *testing.T) {
 
 	require.Equal(t, 0x106b, int(c.VendorID))
 	require.Equal(t, 0x106b, int(c.Ssvid))
-	require.Contains(t, string(bytes.TrimSpace(c.ModelNumber[:])), "APPLE SSD")
+	require.Contains(t, c.ModelNumber(), "APPLE SSD")
 	require.Equal(t, 1, int(c.Nn))
 
 	require.Len(t, ns, 1)

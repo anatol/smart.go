@@ -1,5 +1,7 @@
 package smart
 
+import "bytes"
+
 // Uint128 is a stopgap until https:// github.com/golang/go/issues/9455 is implemented
 type Uint128 struct {
 	// uint128 is represented as pair of uint64. Val[0] represents lower part of the uint128 value.
@@ -20,14 +22,14 @@ type NvmeIdentController struct {
 	Ssvid uint16
 	// Serial Number (SN): Contains the serial number for the NVM subsystem that is
 	// assigned by the vendor as an ASCII string.
-	SerialNumber [20]byte
+	SerialNumberRaw [20]byte
 	// Model Number (MN): Contains the model number for the NVM subsystem that is
 	// assigned by the vendor as an ASCII string.
-	ModelNumber [40]byte
+	ModelNumberRaw [40]byte
 	// Firmware Revision (FR): Contains the currently active firmware revision, as an ASCII
 	// string, for the domain of which this controller is a part. This is the same revision
 	// information that may be retrieved with the Get Log Page command.
-	Firmware [8]byte
+	FirmwareRevRaw [8]byte
 	// Recommended Arbitration Burst (RAB): This is the recommended Arbitration Burst
 	// size. The value is in commands and is reported as a power of two (2^n). This is the
 	// same units as the Arbitration Burst size.
@@ -708,6 +710,18 @@ type NvmeIdentController struct {
 	Vs    [1024]byte              // Vendor Specific
 } // 4096 bytes
 
+func (c *NvmeIdentController) ModelNumber() string {
+	return string(bytes.TrimSpace(c.ModelNumberRaw[:]))
+}
+
+func (c *NvmeIdentController) SerialNumber() string {
+	return string(bytes.TrimSpace(c.SerialNumberRaw[:]))
+}
+
+func (c *NvmeIdentController) FirmwareRev() string {
+	return string(bytes.TrimSpace(c.FirmwareRevRaw[:]))
+}
+
 type NvmeIdentPowerState struct {
 	MaxPower        uint16 // Maximum Power (specified in MaxPowerScale units)
 	_               uint8
@@ -1120,6 +1134,10 @@ type NvmeIdentNamespace struct {
 	// Vendor Specific
 	Vs [3712]byte
 } // 4096 bytes
+
+func (ns *NvmeIdentNamespace) LbaSize() uint64 {
+	return uint64(1) << ns.Lbaf[ns.Flbas&0xf].Ds
+}
 
 type NvmeSMARTLog struct {
 	CritWarning            uint8  // Critical Warning

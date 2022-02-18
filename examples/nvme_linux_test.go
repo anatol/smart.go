@@ -1,7 +1,6 @@
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 	"testing"
@@ -26,12 +25,13 @@ func TestNVMe(t *testing.T) {
 
 	require.Equal(t, 0x1b36, int(c.VendorID))
 	require.Equal(t, 0x1af4, int(c.Ssvid))
-	require.Equal(t, "smarttest", string(bytes.TrimSpace(c.SerialNumber[:])))
-	require.Equal(t, "QEMU NVMe Ctrl", string(bytes.TrimSpace(c.ModelNumber[:])))
+	require.Equal(t, "smarttest", c.SerialNumber())
+	require.Equal(t, "QEMU NVMe Ctrl", c.ModelNumber())
 	require.Equal(t, 256, int(c.Nn))
 
 	require.Len(t, ns, 1)
 	require.Equal(t, 0x14000, int(ns[0].Nsze))
+	require.Equal(t, 512, int(ns[0].LbaSize()))
 
 	sm, err := dev.ReadSMART()
 	require.NoError(t, err)
