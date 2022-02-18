@@ -1188,10 +1188,29 @@ const (
 	nvmeLogDeviceSelftest    = 0x6
 )
 
-type NVMeDevice struct {
-	fd int
-}
-
 func (d *NVMeDevice) Type() string {
 	return "nvme"
+}
+
+func (d *NVMeDevice) Identify() (*NvmeIdentController, []NvmeIdentNamespace, error) {
+	controller, err := d.readControllerIdentifyData()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var ns []NvmeIdentNamespace
+	// QEMU has 256 namespaces for some reason, TODO: clarify
+	for i := 0; i < int(controller.Nn); i++ {
+		namespace, err := d.readNamespaceIdentifyData(i + 1)
+		if err != nil {
+			return nil, nil, err
+		}
+		if namespace.Nsze == 0 {
+			continue
+		}
+
+		ns = append(ns, *namespace)
+	}
+
+	return controller, ns, nil
 }

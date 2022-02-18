@@ -38,6 +38,10 @@ type nvmePassthruCmd64 struct {
 	result      uint64
 }
 
+type NVMeDevice struct {
+	fd int
+}
+
 func OpenNVMe(name string) (*NVMeDevice, error) {
 	fd, err := unix.Open(name, unix.O_RDWR, 0600)
 	if err != nil {
@@ -54,44 +58,13 @@ func (d *NVMeDevice) Close() error {
 	return unix.Close(d.fd)
 }
 
-func (d *NVMeDevice) Identify() (*NvmeIdentController, []NvmeIdentNamespace, error) {
-	buf := make([]byte, 4096)
-	if err := nvmeReadIdentify(d.fd, 0, 1, buf); err != nil {
-		return nil, nil, err
-	}
-	var controller NvmeIdentController
-	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &controller); err != nil {
-		return nil, nil, err
-	}
-
-	var ns []NvmeIdentNamespace
-	// QEMU has 256 namespaces for some reason, TODO: clarify
-	for i := 0; i < int(controller.Nn); i++ {
-		buf2 := make([]byte, 4096)
-		var n NvmeIdentNamespace
-		if err := nvmeReadIdentify(d.fd, uint32(i+1), 0, buf2); err != nil {
-			return nil, nil, err
-		}
-		if err := binary.Read(bytes.NewBuffer(buf2), binary.LittleEndian, &n); err != nil {
-			return nil, nil, err
-		}
-		if n.Nsze == 0 {
-			continue
-		}
-
-		ns = append(ns, n)
-	}
-
-	return &controller, ns, nil
-}
-
 func (d *NVMeDevice) ReadSMART() (*NvmeSMARTLog, error) {
-	buf3 := make([]byte, 512)
-	if err := nvmeReadLogPage(d.fd, nvmeLogSmartInformation, buf3); err != nil {
+	buf := make([]byte, 512)
+	if err := nvmeReadLogPage(d.fd, nvmeLogSmartInformation, buf); err != nil {
 		return nil, err
 	}
 	var sl NvmeSMARTLog
-	if err := binary.Read(bytes.NewBuffer(buf3), binary.LittleEndian, &sl); err != nil {
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &sl); err != nil {
 		return nil, err
 	}
 
@@ -116,14 +89,40 @@ func nvmeReadLogPage(fd int, logID uint8, buf []byte) error {
 	return ioctl(uintptr(fd), nvmeIoctlAdmin64Cmd, uintptr(unsafe.Pointer(&cmd)))
 }
 
-func nvmeReadIdentify(fd int, nsid, cns uint32, data []byte) error {
+func (d *NVMeDevice) readIdentifyData(nsid, cns int, data []byte) error {
 	cmd := nvmePassthruCmd64{
 		opcode:  nvmeAdminIdentify,
-		nsid:    nsid,
+		nsid:    uint32(nsid),
 		addr:    uint64(uintptr(unsafe.Pointer(&data[0]))),
 		dataLen: uint32(len(data)),
-		cdw10:   cns,
+		cdw10:   uint32(cns),
 	}
 
-	return ioctl(uintptr(fd), nvmeIoctlAdmin64Cmd, uintptr(unsafe.Pointer(&cmd)))
+	return ioctl(uintptr(d.fd), nvmeIoctlAdmin64Cmd, uintptr(unsafe.Pointer(&cmd)))
+}
+
+func (d *NVMeDevice) readControllerIdentifyData() (*NvmeIdentController, error) {
+	buf := make([]byte, 4096)
+	if err := d.readIdentifyData(0, 1, buf); err != nil {
+		return nil, err
+	}
+	var controller NvmeIdentController
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &controller); err != nil {
+		return nil, err
+	}
+
+	return &controller, nil
+}
+
+func (d *NVMeDevice) readNamespaceIdentifyData(nsid int) (*NvmeIdentNamespace, error) {
+	buf := make([]byte, 4096)
+	if err := d.readIdentifyData(nsid, 0, buf); err != nil {
+		return nil, err
+	}
+	var namespace NvmeIdentNamespace
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &namespace); err != nil {
+		return nil, err
+	}
+
+	return &namespace, nil
 }

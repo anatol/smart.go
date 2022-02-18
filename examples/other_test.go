@@ -1,6 +1,6 @@
-// go:build !linux
-//go:build !linux
-// +build !linux
+// go:build !linux&& !darwin
+//go:build !linux && !darwin
+// +build !linux,!darwin
 
 package test
 
