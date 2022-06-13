@@ -2,6 +2,9 @@ package smart
 
 import (
 	"bytes"
+	"fmt"
+	"regexp"
+	"time"
 )
 
 // https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf
@@ -338,20 +341,73 @@ func fromAtaString(in []byte) string {
 	return string(swapped)
 }
 
-// AtaSmartAttr individual SMART attribute (12 bytes)
-type AtaSmartAttr struct {
-	Id          uint8
-	Flags       uint16
-	Value       uint8   // normalised value
-	Worst       uint8   // worst value
-	VendorBytes [6]byte // vendor-specific (and sometimes device-specific) data
-	_           uint8
+//go:generate go run generator/ata_attributes.go
+
+const (
+	ataDeviceAttributeRestrictionNone = iota
+	ataDeviceAttributeRestrictionHDDOnly
+	ataDeviceAttributeRestrictionSSDOnly
+)
+
+const (
+	AtaDeviceAttributeTypeRaw8          = iota + 1 // formatting is raw[40:48], raw[32:40], raw[24:32], raw[16:24], raw[8:16], raw[0:8]
+	AtaDeviceAttributeTypeRaw16                    // formatting is raw[32:48], raw[16:32], raw[0:16]
+	AtaDeviceAttributeTypeRaw48                    // formatting is raw[0:48]
+	AtaDeviceAttributeTypeHex48                    // formatting is raw[0:48] in hex
+	AtaDeviceAttributeTypeRaw56                    // formatting is raw[0:56]
+	AtaDeviceAttributeTypeHex56                    // formatting is raw[0:56] in hex
+	AtaDeviceAttributeTypeRaw64                    // formatting is raw[0:64]
+	AtaDeviceAttributeTypeHex64                    // formatting is raw[0:64] in hex
+	AtaDeviceAttributeTypeRaw16OptRaw16            // formatting is raw[0:16] and optional raw[32:48], raw[16:32]
+	AtaDeviceAttributeTypeRaw16OptAvg16            // formatting is raw[0:6] and optional raw[16:32] as average
+	AtaDeviceAttributeTypeRaw24OptRaw8             // formatting is raw[0:24] and optional raw[40:48], raw[32:40], raw[24:32]
+	AtaDeviceAttributeTypeRaw24DivRaw24            // formatting is raw[24:48]/raw[0:24]
+	AtaDeviceAttributeTypeRaw24DivRaw32            // formatting is raw[32:56]/raw[0:32]
+	AtaDeviceAttributeTypeSec2Hour                 // formatting is hours = raw/3600; minutes = (raw-3600*hours)/60; seconds = raw%60
+	AtaDeviceAttributeTypeMin2Hour                 // formatting is hours = raw[0:32]/60; minutes = raw[0:32]%60; optional raw[32:48] as ???
+	AtaDeviceAttributeTypeHalfMin2Hour             // formatting is hours = raw/120; minutes = (raw-120*hours)/2
+	AtaDeviceAttributeTypeMsec24Hour32             // formatting is hours = raw[32:64]; milliseconds = raw[0:32]
+	AtaDeviceAttributeTypeTempMinMax               // formatting is too complicated
+	AtaDeviceAttributeTypeTemp10X                  // formatting is temp = raw[0:32]/10 in Celsius
+)
+
+type ataDeviceAttr struct {
+	name        string
+	typ         int
+	byteOrder   string
+	restriction int
 }
 
-// AtaSmartPage is page of 30 SMART attributes as per ATA spec
-type AtaSmartPage struct {
+const (
+	ataFirmwareBugNoLogDir = 1 << iota
+	ataFirmwareBugSamsung
+	ataFirmwareBugSamsung2
+	ataFirmwareBugSamsung3
+	ataFirmwareBugXErrorLBA
+)
+
+type ataDeviceInfo struct {
+	model      string
+	modelRe    string
+	firmwareRe string
+	presets    map[int]ataDeviceAttr
+	bug        int
+}
+
+// AtaSmartAttrRaw individual SMART attribute (12 bytes)
+type AtaSmartAttrRaw struct {
+	Id          uint8
+	Flags       uint16
+	Current     uint8   // current value from the device
+	Worst       uint8   // worst value
+	VendorBytes [6]byte // vendor-specific (and sometimes device-specific) data
+	Reserved    uint8
+}
+
+// AtaSmartPageRaw is page of 30 SMART attributes as per ATA spec
+type AtaSmartPageRaw struct {
 	Version uint16
-	Attrs   [30]AtaSmartAttr
+	Attrs   [30]AtaSmartAttrRaw
 }
 
 // SMART log address 00h
@@ -391,9 +447,267 @@ type AtaSmartSelfTestLog struct {
 }
 
 type SataDevice struct {
-	fd int
+	fd               int
+	attributeMapping map[int]ataDeviceAttr
+	firmwareBug      int
 }
 
 func (d *SataDevice) Type() string {
 	return "sata"
+}
+
+func findAttributesMapping(model, firmware string) (map[int]ataDeviceAttr, int, error) {
+	db, err := findMatchingDbRecord(model, firmware)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if db == nil {
+		return ataDefaultAttributes, 0, nil
+	}
+
+	if db.presets == nil {
+		return ataDefaultAttributes, db.bug, nil
+	}
+
+	// combine default and db attributes mapping
+	attributeMapping := make(map[int]ataDeviceAttr)
+	for k, v := range ataDefaultAttributes {
+		attributeMapping[k] = v
+	}
+	for k, v := range db.presets {
+		attributeMapping[k] = v
+	}
+	return attributeMapping, db.bug, nil
+}
+
+func findMatchingDbRecord(model, firmware string) (*ataDeviceInfo, error) {
+	for _, db := range ataDevicesDatabase {
+		matched, err := regexp.MatchString(db.modelRe, model)
+		if err != nil {
+			return nil, err
+		}
+		if !matched {
+			continue
+		}
+
+		if db.firmwareRe != "" {
+			matched, err := regexp.MatchString(db.firmwareRe, firmware)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		return &db, nil
+	}
+
+	return nil, nil
+}
+
+type AtaSmartAttr struct {
+	Id          uint8
+	Flags       uint16
+	Current     uint8   // raw value from the device
+	Worst       uint8   // worst value
+	VendorBytes [6]byte // vendor-specific (and sometimes device-specific) data
+
+	// computed values
+	Name     string
+	Type     int
+	ValueRaw uint64
+}
+
+func (a AtaSmartAttr) ParseAsDuration() (time.Duration, error) {
+	switch a.Type {
+	case AtaDeviceAttributeTypeMin2Hour:
+		return time.Duration(a.ValueRaw&0xffffffff) * time.Minute, nil
+	case AtaDeviceAttributeTypeSec2Hour:
+		return time.Duration(a.ValueRaw) * time.Second, nil
+	case AtaDeviceAttributeTypeHalfMin2Hour:
+		// 30-second counter
+		return time.Duration(a.ValueRaw) * 30 * time.Second, nil
+	case AtaDeviceAttributeTypeMsec24Hour32:
+		// hours + milliseconds
+		hours := a.ValueRaw & 0xffffffff
+		milliseconds := a.ValueRaw >> 32
+		return time.Duration(hours)*time.Hour + time.Duration(milliseconds)*time.Millisecond, nil
+	default:
+		return 0, fmt.Errorf("unknown time type: %d", a.Type)
+	}
+}
+
+// ParseAsTemperature returns temperature, range and optional over temperature counter
+// if a.Type is equal AtaDeviceAttributeTypeTemp10X then the returned temperature is round down to the closest integer value;
+//    and the rest of the temperature fields are zeros.
+// if a.Type is equal AtaDeviceAttributeTypeTempMinMax then the first returned value is temperature and then 3 optional follow:
+//    Min/Max and over temperature counter. The optional values are not supported by all harddrives.
+func (a AtaSmartAttr) ParseAsTemperature() (int /* val */, int /* low */, int /* hi */, int /* ?? */, error) {
+	switch a.Type {
+	case AtaDeviceAttributeTypeTemp10X:
+		return int(a.ValueRaw&0xffff) / 10, 0, 0, 0, nil
+	case AtaDeviceAttributeTypeTempMinMax:
+		// consult smartmontools ata_format_attr_raw_value() function that has more information about this algorithm
+		word0 := uint16(a.ValueRaw)
+		word1 := uint16(a.ValueRaw >> 16)
+		word2 := uint16(a.ValueRaw >> 32)
+
+		raw0 := int8(a.ValueRaw)
+		raw1 := int8(a.ValueRaw >> 8)
+		raw2 := int8(a.ValueRaw >> 16)
+		raw3 := int8(a.ValueRaw >> 24)
+		raw4 := int8(a.ValueRaw >> 32)
+		//raw5 := int8(a.ValueRaw >> 40)
+
+		var hi, lo int8
+
+		ctw0 := checkTempWord(word0)
+		if word2 == 0 {
+			if word1 == 0 && ctw0 != 0 {
+				// 00 00 00 00 xx TT
+				return int(raw0), 0, 0, 0, nil
+			} else if ctw0 != 0 && checkTempRange(raw0, raw2, raw3, &lo, &hi) {
+				// 00 00 HL LH xx TT
+				return int(raw0), int(lo), int(hi), 0, nil
+			} else if raw3 == 0 && checkTempRange(raw0, raw1, raw2, &lo, &hi) {
+				// 00 00 00 HL LH TT
+				return int(raw0), int(lo), int(hi), 0, nil
+			}
+		} else if ctw0 != 0 {
+			if (ctw0&checkTempWord(word1)&checkTempWord(word2)) != 0x00 && checkTempRange(raw0, raw2, raw4, &lo, &hi) {
+				// xx HL xx LH xx TT
+				return int(raw0), int(lo), int(hi), 0, nil
+			} else if word2 < 0x7fff && checkTempRange(raw0, raw2, raw3, &lo, &hi) && hi >= 40 {
+				// CC CC HL LH xx TT
+				return int(raw0), int(lo), int(hi), int(word2), nil
+			}
+		}
+		return int(raw0), 0, 0, 0, nil
+	default:
+		return 0, 0, 0, 0, fmt.Errorf("unknown temperature min/max type: %d", a.Type)
+	}
+}
+
+func checkTempWord(word uint16) int {
+	if word <= 0x7f {
+		return 0x11 // >= 0, signed byte or word
+	}
+	if word <= 0xff {
+		return 0x01 // < 0, signed byte
+	}
+	if 0xff80 <= word {
+		return 0x10 // < 0, signed word
+	}
+	return 0x00
+}
+
+func checkTempRange(t int8, t1 int8, t2 int8, lo *int8, hi *int8) bool {
+	if t1 > t2 {
+		tx := t1
+		t1 = t2
+		t2 = tx
+	}
+
+	if -60 <= t1 && t1 <= t && t <= t2 && t2 <= 120 && !(t1 == -1 && t2 <= 0) {
+		*lo = t1
+		*hi = t2
+		return true
+	}
+	return false
+}
+
+type AtaSmartPage struct {
+	Version uint16
+	Attrs   map[uint8]AtaSmartAttr
+}
+
+func (d *SataDevice) ReadSMARTData() (*AtaSmartPage, error) {
+	pageRaw, err := d.readSMARTData()
+	if err != nil {
+		return nil, err
+	}
+
+	page := AtaSmartPage{}
+	page.Version = pageRaw.Version
+	page.Attrs = make(map[uint8]AtaSmartAttr)
+
+	for _, a := range pageRaw.Attrs {
+		if a.Id == 0 {
+			break
+		}
+
+		n := AtaSmartAttr{}
+		n.Id = a.Id
+		n.Flags = a.Flags
+		n.Current = a.Current
+		n.Worst = a.Worst
+		n.VendorBytes = a.VendorBytes
+
+		// extract raw value
+		if mapping, ok := d.attributeMapping[int(a.Id)]; ok {
+			n.ValueRaw = computeAttributeRawValue(mapping, a.VendorBytes, a.Reserved, a.Current, a.Worst)
+			n.Type = mapping.typ
+			n.Name = mapping.name
+		}
+
+		page.Attrs[n.Id] = n
+	}
+
+	return &page, nil
+}
+
+func computeAttributeRawValue(mapping ataDeviceAttr, vendorBytes [6]byte, reserved uint8, current uint8, worst uint8) uint64 {
+	byteOrder := mapping.byteOrder
+	switch mapping.typ {
+	case AtaDeviceAttributeTypeRaw64:
+		fallthrough
+	case AtaDeviceAttributeTypeHex64:
+		byteOrder = "543210wv"
+
+	case AtaDeviceAttributeTypeRaw56:
+		fallthrough
+	case AtaDeviceAttributeTypeHex56:
+		fallthrough
+	case AtaDeviceAttributeTypeRaw24DivRaw32:
+		fallthrough
+	case AtaDeviceAttributeTypeMsec24Hour32:
+		byteOrder = "r543210"
+
+	default:
+		byteOrder = "543210"
+	}
+
+	// Build 64-bit value from selected bytes
+	var rawValue uint64
+
+	for _, c := range byteOrder {
+		var b uint8
+
+		switch c {
+		case '0':
+			b = vendorBytes[0]
+		case '1':
+			b = vendorBytes[1]
+		case '2':
+			b = vendorBytes[2]
+		case '3':
+			b = vendorBytes[3]
+		case '4':
+			b = vendorBytes[4]
+		case '5':
+			b = vendorBytes[5]
+		case 'r':
+			b = reserved
+		case 'v':
+			b = current
+		case 'w':
+			b = worst
+		}
+
+		rawValue <<= 8
+		rawValue |= uint64(b)
+	}
+	return rawValue
 }

@@ -27,7 +27,21 @@ func OpenSata(name string) (*SataDevice, error) {
 
 	dev := SataDevice{
 		fd,
+		nil,
+		0,
 	}
+
+	id, err := dev.Identify()
+	if err != nil {
+		return nil, err
+	}
+	mapping, bug, err := findAttributesMapping(id.ModelNumber(), id.FirmwareRevision())
+	if err != nil {
+		return nil, err
+	}
+	dev.attributeMapping = mapping
+	dev.firmwareBug = bug
+
 	return &dev, nil
 }
 
@@ -76,7 +90,7 @@ func (d *SataDevice) readSMARTLog(logPage uint8) ([]byte, error) {
 	return respBuf, nil
 }
 
-func (d *SataDevice) ReadSMARTData() (*AtaSmartPage, error) {
+func (d *SataDevice) readSMARTData() (*AtaSmartPageRaw, error) {
 	cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
 	cdb[1] = 0x08             // ATA protocol (4 << 1, PIO data-in)
 	cdb[2] = 0x0e             // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
@@ -91,8 +105,8 @@ func (d *SataDevice) ReadSMARTData() (*AtaSmartPage, error) {
 		return nil, fmt.Errorf("scsiSendCdb SMART READ DATA: %v", err)
 	}
 
-	page := AtaSmartPage{}
-	if err := binary.Read(bytes.NewBuffer(respBuf[:362]), binary.BigEndian, &page); err != nil {
+	page := AtaSmartPageRaw{}
+	if err := binary.Read(bytes.NewBuffer(respBuf[:362]), binary.LittleEndian, &page); err != nil {
 		return nil, err
 	}
 
@@ -106,7 +120,7 @@ func (d *SataDevice) ReadSMARTLogDirectory() (*AtaSmartLogDirectory, error) {
 	}
 
 	dir := AtaSmartLogDirectory{}
-	if err := binary.Read(bytes.NewBuffer(buf), binary.BigEndian, &dir); err != nil {
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &dir); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +134,7 @@ func (d *SataDevice) ReadSMARTErrorLogSummary() (*AtaSmartErrorLogSummary, error
 	}
 
 	summary := AtaSmartErrorLogSummary{}
-	if err := binary.Read(bytes.NewBuffer(buf), binary.BigEndian, &summary); err != nil {
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &summary); err != nil {
 		return nil, err
 	}
 
@@ -134,7 +148,7 @@ func (d *SataDevice) ReadSMARTSelfTestLog() (*AtaSmartSelfTestLog, error) {
 	}
 
 	log := AtaSmartSelfTestLog{}
-	if err := binary.Read(bytes.NewBuffer(buf), binary.BigEndian, &log); err != nil {
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &log); err != nil {
 		return nil, err
 	}
 

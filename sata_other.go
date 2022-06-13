@@ -20,7 +20,7 @@ func (d *SataDevice) readSMARTLog(logPage uint8) ([]byte, error) {
 	return nil, ErrOSUnsupported
 }
 
-func (d *SataDevice) ReadSMARTData() (*AtaSmartPage, error) {
+func (d *SataDevice) readSMARTData() (*AtaSmartPageRaw, error) {
 	return nil, ErrOSUnsupported
 }
 

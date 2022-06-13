@@ -58,7 +58,11 @@ for _, disk := range block.Disks {
 
         switch sm := dev.(type) {
         case *smart.SataDevice:
-            _, _ = sm.Identify()
+            data, err := sm.ReadSMARTData()
+            attr, ok := data.Attrs[194]; ok { // attr.Name == "Temperature_Celsius"
+                temp, min, max, overtempCounter, err := attr.ParseAsTemperature()
+                // min/max/counter are optional
+            }
         case *smart.ScsiDevice:
             _, _ = sm.Capacity()
         case *smart.NVMeDevice:
