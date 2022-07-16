@@ -559,7 +559,7 @@ func (a AtaSmartAttr) ParseAsTemperature() (int /* val */, int /* low */, int /*
 		raw2 := int8(a.ValueRaw >> 16)
 		raw3 := int8(a.ValueRaw >> 24)
 		raw4 := int8(a.ValueRaw >> 32)
-		//raw5 := int8(a.ValueRaw >> 40)
+		// raw5 := int8(a.ValueRaw >> 40)
 
 		var hi, lo int8
 

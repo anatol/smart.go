@@ -15,7 +15,7 @@ func TestSata(t *testing.T) {
 
 	out, err := exec.Command("smartctl", "-a", path).CombinedOutput()
 	fmt.Println(string(out))
-	//require.NoError(t, err)
+	// require.NoError(t, err)
 
 	dev, err := smart.OpenSata(path)
 	require.NoError(t, err)

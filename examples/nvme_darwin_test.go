@@ -14,7 +14,7 @@ func TestNVMe(t *testing.T) {
 
 	out, err := exec.Command("smartctl", "-a", path).CombinedOutput()
 	fmt.Println(string(out))
-	//require.NoError(t, err)  it fails at macosx because of GetLogPage()
+	// require.NoError(t, err)  it fails at macosx because of GetLogPage()
 
 	dev, err := smart.OpenNVMe(path)
 	require.NoError(t, err)

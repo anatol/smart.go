@@ -43,7 +43,7 @@ type NVMeDevice struct {
 }
 
 func OpenNVMe(name string) (*NVMeDevice, error) {
-	fd, err := unix.Open(name, unix.O_RDWR, 0600)
+	fd, err := unix.Open(name, unix.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
 	}

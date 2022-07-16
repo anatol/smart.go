@@ -12,9 +12,7 @@ import (
 	"strings"
 )
 
-var (
-	outputFile = flag.String("output", "ata_device_database.go", "output file")
-)
+var outputFile = flag.String("output", "ata_device_database.go", "output file")
 
 func main() {
 	flag.Parse()
@@ -70,7 +68,7 @@ func extractDatabase() ([]byte, error) {
     return 0;
   }
 `
-	if err := ioutil.WriteFile(d+"/main.c", []byte(content), 0755); err != nil {
+	if err := ioutil.WriteFile(d+"/main.c", []byte(content), 0o755); err != nil {
 		return nil, err
 	}
 
