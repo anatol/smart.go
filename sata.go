@@ -541,9 +541,10 @@ func (a AtaSmartAttr) ParseAsDuration() (time.Duration, error) {
 
 // ParseAsTemperature returns temperature, range and optional over temperature counter
 // if a.Type is equal AtaDeviceAttributeTypeTemp10X then the returned temperature is round down to the closest integer value;
-//    and the rest of the temperature fields are zeros.
-// if a.Type is equal AtaDeviceAttributeTypeTempMinMax then the first returned value is temperature and then 3 optional follow:
-//    Min/Max and over temperature counter. The optional values are not supported by all harddrives.
+// and the rest of the temperature fields are zeros.
+//
+// if a.Type is equal AtaDeviceAttributeTypeTempMinMax then the first returned value is temperature and then 3 optional fields follow -
+// Min, Max and OverTemperature counter. The optional values are not supported by all harddrives.
 func (a AtaSmartAttr) ParseAsTemperature() (int /* val */, int /* low */, int /* hi */, int /* ?? */, error) {
 	switch a.Type {
 	case AtaDeviceAttributeTypeTemp10X:
