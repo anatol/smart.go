@@ -5,7 +5,7 @@ Smart.go tries to match functionality provided by [smartctl](https://www.smartmo
 
 Currently this library support SATA, SCSI and NVMe drives. Different drive types provide different set of monitoring information and API reflects it.
 
-At this point the library works at Linux and partialy at MacOSX. We are looking for help with porting it to other platforms.
+At this point the library works at Linux and partially at MacOSX. We are looking for help with porting it to other platforms.
 
 ## Example
 

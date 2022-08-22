@@ -86,10 +86,10 @@ func printDeviceDatabase(db []byte) error {
 	lines := strings.Split(string(db), "\t\t\naa\t")
 
 	if !strings.HasPrefix(lines[0], "VERSION:") {
-		return fmt.Errorf("'VERSION:' must be the first line in the dabase")
+		return fmt.Errorf("'VERSION:' must be the first line in the database")
 	}
 	if !strings.HasPrefix(lines[5], "DEFAULT") {
-		return fmt.Errorf("'DEFAULT' must be the first line in the dabase")
+		return fmt.Errorf("'DEFAULT' must be the first line in the database")
 	}
 
 	f, err := os.Create(*outputFile)
