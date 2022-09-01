@@ -456,6 +456,35 @@ func (d *SataDevice) Type() string {
 	return "sata"
 }
 
+func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
+	page, err := d.ReadSMARTData()
+	if err != nil {
+		return nil, err
+	}
+
+	a := GenericAttributes{}
+	for _, attr := range page.Attrs {
+		switch attr.Name {
+		case "Airflow_Temperature_Cel":
+			current, _, _, _, err := attr.ParseAsTemperature()
+			if err != nil {
+				return nil, err
+			}
+			a.Temperature = uint64(current)
+		case "Total_LBAs_Read":
+			a.Read = attr.ValueRaw
+		case "Total_LBAs_Written":
+			a.Written = attr.ValueRaw
+		case "Power_On_Hours":
+			a.PowerOnHours = attr.ValueRaw
+		case "Power_Cycle_Count":
+			a.PowerCycles = attr.ValueRaw
+		}
+	}
+
+	return &a, nil
+}
+
 func findAttributesMapping(model, firmware string) (map[int]ataDeviceAttr, int, error) {
 	db, err := findMatchingDbRecord(model, firmware)
 	if err != nil {
