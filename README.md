@@ -71,5 +71,24 @@ for _, disk := range block.Disks {
 }
 ```
 
+Reading generic SMART attributes.
+
+smart.go provides API for easier access to the most commonly used device attributes.
+
+```go
+dev, err := smart.Open("/dev/nvme0n1")
+require.NoError(t, err)
+defer dev.Close()
+
+a, err := dev.ReadGenericAttributes()
+require.NoError(t, err)
+
+fmt.Println("The temperature is ", a.Temperature) // in Celsius
+fmt.Println("Read block count ", a.Read)
+fmt.Println("Written block count ", a.Written)
+fmt.Println("Power Cycles count ", a.PowerCycles)
+fmt.Println("Power On Hours ", a.PowerOnHours)
+```
+
 ### Credit
 This project is inspired by https://github.com/dswarbrick/smart
