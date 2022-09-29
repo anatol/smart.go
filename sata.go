@@ -466,6 +466,10 @@ func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 	for _, attr := range page.Attrs {
 		switch attr.Name {
 		case "Airflow_Temperature_Cel":
+			fallthrough
+		case "Temperature_Celsius":
+			fallthrough
+		case "Temperature_Celsius_X10":
 			current, _, _, _, err := attr.ParseAsTemperature()
 			if err != nil {
 				return nil, err
