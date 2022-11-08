@@ -19,9 +19,10 @@ const (
 	_ATA_IDENTIFY_DEVICE = 0xec
 
 	// ATA feature register values for SMART
-	_SMART_READ_DATA     = 0xd0
-	_SMART_READ_LOG      = 0xd5
-	_SMART_RETURN_STATUS = 0xda
+	_SMART_READ_DATA       = 0xd0
+	_SMART_READ_THRESHOLDS = 0xd1
+	_SMART_READ_LOG        = 0xd5
+	_SMART_RETURN_STATUS   = 0xda
 )
 
 // AtaIdentifyDevice ATA IDENTIFY DEVICE struct. ATA8-ACS defines this as a page of 16-bit words.
@@ -452,6 +453,21 @@ type SataDevice struct {
 	firmwareBug      int
 }
 
+// AtaSmartThresholdEntry individual SMART attribute threshold (12 bytes)
+type AtaSmartThresholdEntry struct {
+	Id        uint8    // SMART attribute ID
+	Threshold uint8    // Threshold value
+	_         [10]byte // Reserved
+}
+
+// AtaSmartThresholdsPageRaw is page of 30 SMART attributes thresholds as per ATA spec
+type AtaSmartThresholdsPageRaw struct {
+	Revnumber        uint16
+	ThresholdEntries [30]AtaSmartThresholdEntry
+	_                [149]byte // Reserved
+	Chksum           byte      // Two's complement checksum of first 511 bytes
+}
+
 func (d *SataDevice) Type() string {
 	return "sata"
 }
@@ -744,4 +760,30 @@ func computeAttributeRawValue(mapping ataDeviceAttr, vendorBytes [6]byte, reserv
 		rawValue |= uint64(b)
 	}
 	return rawValue
+}
+
+type AtaSmartThresholdsPage struct {
+	Revnumber  uint16
+	Thresholds map[uint8]uint8
+}
+
+func (d *SataDevice) ReadSMARTThresholds() (*AtaSmartThresholdsPage, error) {
+	pageRaw, err := d.readSMARTThresholds()
+	if err != nil {
+		return nil, err
+	}
+
+	page := AtaSmartThresholdsPage{}
+	page.Revnumber = pageRaw.Revnumber
+	page.Thresholds = make(map[uint8]uint8)
+
+	for _, a := range pageRaw.ThresholdEntries {
+		if a.Id == 0 {
+			break
+		}
+
+		page.Thresholds[a.Id] = a.Threshold
+	}
+
+	return &page, nil
 }
