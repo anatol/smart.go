@@ -171,10 +171,22 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 		return nil, fmt.Errorf("scsiSendCdb SMART READ THRESHOLD: %v", err)
 	}
 
+	if !checksum(respBuf) {
+		return nil, fmt.Errorf("invalid checksum for SMART THRESHOLD data")
+	}
+
 	page := AtaSmartThresholdsPageRaw{}
 	if err := binary.Read(bytes.NewBuffer(respBuf[:]), binary.LittleEndian, &page); err != nil {
 		return nil, err
 	}
 
 	return &page, nil
+}
+
+func checksum(data []byte) bool {
+	var sum byte
+	for _, b := range data {
+		sum += b
+	}
+	return sum == 0
 }
