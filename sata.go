@@ -23,6 +23,9 @@ const (
 	_SMART_READ_THRESHOLDS = 0xd1
 	_SMART_READ_LOG        = 0xd5
 	_SMART_RETURN_STATUS   = 0xda
+
+	ATTRIBUTE_FLAGS_PREFAILURE = 0x01 // 0: Prefailure bit
+	ATTRIBUTE_FLAGS_ONLINE     = 0x02 // 1: Online bit
 )
 
 // AtaIdentifyDevice ATA IDENTIFY DEVICE struct. ATA8-ACS defines this as a page of 16-bit words.
@@ -666,6 +669,20 @@ func checkTempRange(t int8, t1 int8, t2 int8, lo *int8, hi *int8) bool {
 		return true
 	}
 	return false
+}
+
+func (a AtaSmartAttr) AttributeFlagsPrefailure() string {
+	if a.Flags&ATTRIBUTE_FLAGS_PREFAILURE != 0 {
+		return "Pre-fail"
+	}
+	return "Old_age"
+}
+
+func (a AtaSmartAttr) AttributeFlagsOnline() string {
+	if a.Flags&ATTRIBUTE_FLAGS_ONLINE != 0 {
+		return "Always"
+	}
+	return "Offline"
 }
 
 type AtaSmartPage struct {
