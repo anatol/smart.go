@@ -556,6 +556,13 @@ func findMatchingDbRecord(model, firmware string) (*ataDeviceInfo, error) {
 	return nil, nil
 }
 
+const (
+	// Prefailure bit. If the flag is 0 it corresponds to "Old_age" value, "Pre-fail" otherwise.
+	AtaAttributeFlagPrefailure = 1 << 0
+	// Online bit. If the flag is 0 it corresponds to "Offline" value, "Always" otherwise.
+	AtaAttributeFlagOnline = 1 << 1
+)
+
 type AtaSmartAttr struct {
 	Id          uint8
 	Flags       uint16
