@@ -23,9 +23,6 @@ const (
 	_SMART_READ_THRESHOLDS = 0xd1
 	_SMART_READ_LOG        = 0xd5
 	_SMART_RETURN_STATUS   = 0xda
-
-	ATTRIBUTE_FLAGS_PREFAILURE = 0x01 // 0: Prefailure bit
-	ATTRIBUTE_FLAGS_ONLINE     = 0x02 // 1: Online bit
 )
 
 // AtaIdentifyDevice ATA IDENTIFY DEVICE struct. ATA8-ACS defines this as a page of 16-bit words.
@@ -559,6 +556,13 @@ func findMatchingDbRecord(model, firmware string) (*ataDeviceInfo, error) {
 	return nil, nil
 }
 
+const (
+	// Prefailure bit. If the flag is 0 it corresponds to "Old_age" value, "Pre-fail" otherwise
+	AtaAttributeFlagPrefailure = 1 << 0
+	// Online bit. If the flag is 0 it corresponds to "Offline" value, "Always" otherwise
+	AtaAttributeFlagOnline = 1 << 1
+)
+
 type AtaSmartAttr struct {
 	Id          uint8
 	Flags       uint16
@@ -666,20 +670,6 @@ func checkTempRange(t int8, t1 int8, t2 int8, lo *int8, hi *int8) bool {
 	if -60 <= t1 && t1 <= t && t <= t2 && t2 <= 120 && !(t1 == -1 && t2 <= 0) {
 		*lo = t1
 		*hi = t2
-		return true
-	}
-	return false
-}
-
-func (a AtaSmartAttr) AttributeFlagsPrefailure() bool {
-	if a.Flags&ATTRIBUTE_FLAGS_PREFAILURE != 0 {
-		return true
-	}
-	return false
-}
-
-func (a AtaSmartAttr) AttributeFlagsOnline() bool {
-	if a.Flags&ATTRIBUTE_FLAGS_ONLINE != 0 {
 		return true
 	}
 	return false
