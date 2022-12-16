@@ -54,8 +54,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 0, int(a.ValueRaw))
 			require.Equal(t, 6, int(thr.Thresholds[1]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 3:
 			require.Equal(t, "Spin_Up_Time", a.Name)
 			require.Equal(t, 0x0003, int(a.Flags))
@@ -63,8 +63,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 16, int(a.ValueRaw))
 			require.Equal(t, 0, int(thr.Thresholds[3]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 4:
 			require.Equal(t, "Start_Stop_Count", a.Name)
 			require.Equal(t, 0x0002, int(a.Flags))
@@ -72,8 +72,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 100, int(a.ValueRaw))
 			require.Equal(t, 20, int(thr.Thresholds[4]))
-			require.Equal(t, "Old_age", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, false, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 5:
 			require.Equal(t, "Reallocated_Sector_Ct", a.Name)
 			require.Equal(t, 0x0003, int(a.Flags))
@@ -81,8 +81,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 0, int(a.ValueRaw))
 			require.Equal(t, 36, int(thr.Thresholds[5]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 9:
 			require.Equal(t, "Power_On_Hours", a.Name)
 			require.Equal(t, 0x0003, int(a.Flags))
@@ -90,8 +90,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 1, int(a.ValueRaw))
 			require.Equal(t, 0, int(thr.Thresholds[9]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 12:
 			require.Equal(t, "Power_Cycle_Count", a.Name)
 			require.Equal(t, 0x0003, int(a.Flags))
@@ -99,8 +99,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 100, int(a.Worst))
 			require.Equal(t, 0, int(a.ValueRaw))
 			require.Equal(t, 0, int(thr.Thresholds[12]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		case 190:
 			require.Equal(t, "Airflow_Temperature_Cel", a.Name)
 			require.Equal(t, 0x0003, int(a.Flags))
@@ -113,8 +113,8 @@ func TestSata(t *testing.T) {
 			require.Equal(t, 31, high)
 			require.Equal(t, 0, counter) // not supported at this drive
 			require.Equal(t, 50, int(thr.Thresholds[190]))
-			require.Equal(t, "Pre-fail", a.AttributeFlagsPrefailure())
-			require.Equal(t, "Always", a.AttributeFlagsOnline())
+			require.Equal(t, true, a.AttributeFlagsPrefailure())
+			require.Equal(t, true, a.AttributeFlagsOnline())
 		}
 	}
 

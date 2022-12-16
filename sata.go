@@ -671,18 +671,18 @@ func checkTempRange(t int8, t1 int8, t2 int8, lo *int8, hi *int8) bool {
 	return false
 }
 
-func (a AtaSmartAttr) AttributeFlagsPrefailure() string {
+func (a AtaSmartAttr) AttributeFlagsPrefailure() bool {
 	if a.Flags&ATTRIBUTE_FLAGS_PREFAILURE != 0 {
-		return "Pre-fail"
+		return true
 	}
-	return "Old_age"
+	return false
 }
 
-func (a AtaSmartAttr) AttributeFlagsOnline() string {
+func (a AtaSmartAttr) AttributeFlagsOnline() bool {
 	if a.Flags&ATTRIBUTE_FLAGS_ONLINE != 0 {
-		return "Always"
+		return true
 	}
-	return "Offline"
+	return false
 }
 
 type AtaSmartPage struct {
