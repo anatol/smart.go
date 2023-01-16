@@ -29,6 +29,13 @@ func TestSata(t *testing.T) {
 	require.Equal(t, [4]uint16{}, i.WWNRaw)
 	require.Equal(t, uint64(0), i.WWN())
 
+	sectors, capacity, logicalSectorSize, physicalSectorSize, logicalSectorOffset := i.Capacity()
+	require.Equal(t, uint64(0x14000), sectors)
+	require.Equal(t, uint64(41943040), capacity)
+	require.Equal(t, uint64(512), logicalSectorSize)
+	require.Equal(t, uint64(512), physicalSectorSize)
+	require.Equal(t, uint64(0), logicalSectorOffset)
+
 	page, err := dev.ReadSMARTData()
 	require.NoError(t, err)
 	fmt.Printf("%+v\n", page)

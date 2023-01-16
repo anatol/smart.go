@@ -24,6 +24,8 @@ func TestSataSizes(t *testing.T) {
 	require.Equal(t, 27*2, int(unsafe.Offsetof(d.ModelNumberRaw)))
 	require.Equal(t, 75*2, int(unsafe.Offsetof(d.QueueDepth)))
 	require.Equal(t, 108*2, int(unsafe.Offsetof(d.WWNRaw)))
+	require.Equal(t, 119*2, int(unsafe.Offsetof(d.CommandsSupported4)))
+	require.Equal(t, 209*2, int(unsafe.Offsetof(d.LogicalSectorOffset)))
 	require.Equal(t, 222*2, int(unsafe.Offsetof(d.TransportMajor)))
 	require.Equal(t, 512, int(unsafe.Sizeof(d)))
 }
