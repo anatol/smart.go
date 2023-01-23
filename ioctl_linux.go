@@ -1,6 +1,10 @@
 package smart
 
-import "golang.org/x/sys/unix"
+import (
+	"fmt"
+
+	"golang.org/x/sys/unix"
+)
 
 const (
 	directionNone  = 0
@@ -47,7 +51,7 @@ func iowr(t, nr, size uintptr) uintptr {
 func ioctl(fd, cmd, ptr uintptr) error {
 	_, _, errno := unix.Syscall(unix.SYS_IOCTL, fd, cmd, ptr)
 	if errno != 0 {
-		return errno
+		return fmt.Errorf("ioctl(cmd=0x%x): %v", cmd, errno)
 	}
 	return nil
 }
