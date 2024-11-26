@@ -4,10 +4,10 @@ go 1.22
 
 require (
 	github.com/anatol/vmtest v0.0.0-20230711210602-87511df0d4bc
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tmc/scp v0.0.0-20170824174625-f7b48647feef
-	golang.org/x/crypto v0.28.0
-	golang.org/x/sys v0.26.0
+	golang.org/x/crypto v0.29.0
+	golang.org/x/sys v0.27.0
 )
 
 require (
