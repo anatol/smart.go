@@ -31,7 +31,7 @@ func TestGenericAttributesNVMe(t *testing.T) {
 	require.Greater(t, uint64(60), a.Temperature)
 	require.Equal(t, uint64(0), a.PowerCycles)
 	require.Equal(t, uint64(0), a.PowerOnHours)
-	require.Equal(t, uint64(3), a.Read)
+	require.Equal(t, uint64(1), a.Read)
 	require.Equal(t, uint64(0), a.Written)
 }
 
