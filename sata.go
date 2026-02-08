@@ -579,7 +579,12 @@ func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 		case "Total_LBAs_Written":
 			a.Written = attr.ValueRaw
 		case "Power_On_Hours":
-			a.PowerOnHours = attr.ValueRaw
+			d, err := attr.ParseAsDuration()
+			if err == nil {
+				a.PowerOnHours = uint64(d.Hours())
+			} else {
+				a.PowerOnHours = attr.ValueRaw
+			}
 		case "Power_Cycle_Count":
 			a.PowerCycles = attr.ValueRaw
 		}
