@@ -3,6 +3,7 @@ package smart
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"regexp"
 	"time"
 )
@@ -603,12 +604,8 @@ func findAttributesMapping(model, firmware string) (map[int]ataDeviceAttr, int, 
 
 	// combine default and db attributes mapping
 	attributeMapping := make(map[int]ataDeviceAttr)
-	for k, v := range ataDefaultAttributes {
-		attributeMapping[k] = v
-	}
-	for k, v := range db.presets {
-		attributeMapping[k] = v
-	}
+	maps.Copy(attributeMapping, ataDefaultAttributes)
+	maps.Copy(attributeMapping, db.presets)
 	return attributeMapping, db.bug, nil
 }
 
