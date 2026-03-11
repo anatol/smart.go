@@ -31,24 +31,25 @@ type Device interface {
 }
 
 func Open(path string) (Device, error) {
-	n, err := OpenNVMe(path)
-	if err == nil {
+	n, nvmeErr := OpenNVMe(path)
+	if nvmeErr == nil {
 		_, _, err := n.Identify()
 		if err == nil {
 			return n, nil
 		}
 		n.Close()
+		nvmeErr = fmt.Errorf("nvme identify: %w", err)
 	}
 
-	a, err := OpenSata(path)
-	if err == nil {
+	a, sataErr := OpenSata(path)
+	if sataErr == nil {
 		return a, nil
 	}
 
-	s, err := OpenScsi(path)
-	if err == nil {
+	s, scsiErr := OpenScsi(path)
+	if scsiErr == nil {
 		return s, nil
 	}
 
-	return nil, fmt.Errorf("unknown drive type")
+	return nil, errors.Join(nvmeErr, sataErr, scsiErr)
 }
