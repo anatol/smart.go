@@ -62,7 +62,7 @@ func (d *SataDevice) Identify() (*AtaIdentifyDevice, error) {
 	cdb[14] = _ATA_IDENTIFY_DEVICE // command
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
-		return &resp, fmt.Errorf("sendCDB ATA IDENTIFY: %v", err)
+		return nil, fmt.Errorf("sendCDB ATA IDENTIFY: %w", err)
 	}
 
 	if err := binary.Read(bytes.NewBuffer(respBuf), binary.LittleEndian, &resp); err != nil {

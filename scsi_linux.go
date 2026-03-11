@@ -96,7 +96,7 @@ func scsiInquiry(fd int) (*ScsiInquiry, error) {
 	binary.BigEndian.PutUint16(cdb[3:5], uint16(len(respBuf)))
 
 	if err := scsiSendCdb(fd, cdb[:], respBuf); err != nil {
-		return &resp, err
+		return nil, err
 	}
 
 	if err := binary.Read(bytes.NewBuffer(respBuf), binary.BigEndian, &resp); err != nil {
