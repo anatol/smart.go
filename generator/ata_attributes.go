@@ -5,7 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+
 	"os"
 	"os/exec"
 	"strconv"
@@ -68,7 +68,7 @@ func extractDatabase() ([]byte, error) {
     return 0;
   }
 `
-	if err := ioutil.WriteFile(d+"/main.c", []byte(content), 0o755); err != nil {
+	if err := os.WriteFile(d+"/main.c", []byte(content), 0o755); err != nil {
 		return nil, err
 	}
 
