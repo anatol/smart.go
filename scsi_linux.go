@@ -116,7 +116,7 @@ func scsiInquiryVpd(fd int, page uint8, respBuf []byte) error {
 func (d *ScsiDevice) SerialNumber() (string, error) {
 	buf := make([]byte, 256)
 	if err := scsiInquiryVpd(d.fd, 0x80, buf); err != nil {
-		return "", nil
+		return "", err
 	}
 
 	if buf[1] != 0x80 {
