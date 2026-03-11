@@ -86,7 +86,7 @@ func (d *SataDevice) readSMARTLog(logPage uint8) ([]byte, error) {
 	cdb[14] = _ATA_SMART     // command
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
-		return nil, fmt.Errorf("scsiSendCdb SMART READ LOG: %v", err)
+		return nil, fmt.Errorf("scsiSendCdb SMART READ LOG: %w", err)
 	}
 
 	return respBuf, nil
@@ -104,7 +104,7 @@ func (d *SataDevice) readSMARTData() (*AtaSmartPageRaw, error) {
 	respBuf := make([]byte, 512)
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
-		return nil, fmt.Errorf("scsiSendCdb SMART READ DATA: %v", err)
+		return nil, fmt.Errorf("scsiSendCdb SMART READ DATA: %w", err)
 	}
 
 	page := AtaSmartPageRaw{}
@@ -170,7 +170,7 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 	respBuf := make([]byte, 512)
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
-		return nil, fmt.Errorf("scsiSendCdb SMART READ THRESHOLD: %v", err)
+		return nil, fmt.Errorf("scsiSendCdb SMART READ THRESHOLD: %w", err)
 	}
 
 	if !checksum(respBuf) {
