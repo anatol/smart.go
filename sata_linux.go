@@ -33,10 +33,12 @@ func OpenSata(name string) (*SataDevice, error) {
 
 	id, err := dev.Identify()
 	if err != nil {
+		unix.Close(fd)
 		return nil, err
 	}
 	mapping, bug, err := findAttributesMapping(id.ModelNumber(), id.FirmwareRevision())
 	if err != nil {
+		unix.Close(fd)
 		return nil, err
 	}
 	dev.attributeMapping = mapping
