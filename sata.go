@@ -333,13 +333,13 @@ func (a *AtaIdentifyDevice) IsGeneralPurposeLoggingCapable() bool {
 	enabled := uint16(1) << 14
 	enabledMask := uint16(0b11) << 14
 
-	glLoggigAttr := uint16(1) << 5
+	glLoggingAttr := uint16(1) << 5
 
 	if a.CommandsSupported3&enabledMask == enabled {
-		return a.CommandsSupported3&enabledMask&glLoggigAttr == glLoggigAttr
+		return a.CommandsSupported3&enabledMask&glLoggingAttr == glLoggingAttr
 	}
 	if a.CommandsEnabled3&enabledMask == enabled {
-		return a.CommandsEnabled3&enabledMask&glLoggigAttr == glLoggigAttr
+		return a.CommandsEnabled3&enabledMask&glLoggingAttr == glLoggingAttr
 	}
 
 	return false
