@@ -15,8 +15,13 @@ import (
 
 // include/uapi/linux/nvme_ioctl.h
 
+// nvmeIoctlAdmin64Cmd is the ioctl for the 64-bit passthrough struct (added in Linux 5.14).
+// nvmeIoctlAdminCmd is the older 32-bit variant used as a fallback on older kernels.
 var nvmeIoctlAdmin64Cmd = iowr('N', 0x47, unsafe.Sizeof(nvmePassthruCmd64{}))
 
+// nvmePassthruCmd64 mirrors struct nvme_passthru_cmd64 from the kernel uapi.
+// It differs from nvmePassthruCmd only in the result field (uint64 vs uint32),
+// allowing drivers to return a full 64-bit completion queue entry result.
 type nvmePassthruCmd64 struct {
 	opcode      uint8
 	flags       uint8
@@ -107,9 +112,12 @@ func nvmeReadLogPage(fd int, logID uint8, buf []byte) error {
 		nsid:    0xffffffff, // controller-level SMART info
 		addr:    uint64(uintptr(unsafe.Pointer(&buf[0]))),
 		dataLen: uint32(bufLen),
-		cdw10:   uint32(logID) | (((uint32(bufLen) / 4) - 1) << 16),
+		// cdw10: bits 7:0 = Log Page Identifier; bits 27:16 = NUMD (number of dwords minus 1)
+		cdw10: uint32(logID) | (((uint32(bufLen) / 4) - 1) << 16),
 	}
 
+	// ENOTTY means the ioctl number is not recognised by the kernel (64-bit struct
+	// not supported), so fall back to the older 32-bit passthrough command.
 	err := ioctl(uintptr(fd), nvmeIoctlAdmin64Cmd, uintptr(unsafe.Pointer(&cmd64)))
 	if err != syscall.ENOTTY {
 		return err
@@ -136,6 +144,7 @@ func (d *NVMeDevice) readIdentifyData(nsid, cns int, data []byte) error {
 		cdw10:   uint32(cns),
 	}
 
+	// ENOTTY means the 64-bit ioctl is not supported; fall back to 32-bit struct.
 	err := ioctl(uintptr(d.fd), nvmeIoctlAdmin64Cmd, uintptr(unsafe.Pointer(&cmd64)))
 	if err != syscall.ENOTTY {
 		return err

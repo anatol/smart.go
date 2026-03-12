@@ -4,6 +4,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Linux ioctl command encoding (see asm-generic/ioctl.h).
+// A 32-bit ioctl number is split into four fields packed from LSB to MSB:
+//
+//	[7:0]   number   (8 bits) – command index within the type group
+//	[15:8]  type     (8 bits) – magic byte identifying the subsystem (e.g. 'N' for NVMe)
+//	[29:16] size     (14 bits) – size of the argument struct in bytes
+//	[31:30] direction (2 bits) – data transfer direction (none/write/read)
 const (
 	directionNone  = 0
 	directionWrite = 1

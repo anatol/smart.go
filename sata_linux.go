@@ -57,8 +57,8 @@ func (d *SataDevice) Identify() (*AtaIdentifyDevice, error) {
 	respBuf := make([]byte, 512)
 
 	cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
-	cdb[1] = 0x08                  // ATA protocol (4 << 1, PIO data-in)
-	cdb[2] = 0x0e                  // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
+	cdb[1] = 0x08                  // ATA protocol: bits [4:1] = 4 (PIO data-in), bit 0 = 0 (multiple commands)
+	cdb[2] = 0x0e                  // BYT_BLOK=1 (transfer length in 512-byte blocks), T_LENGTH=2 (from sector count field), T_DIR=1 (from device)
 	cdb[14] = _ATA_IDENTIFY_DEVICE // command
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
@@ -79,10 +79,10 @@ func (d *SataDevice) readSMARTLog(logPage uint8) ([]byte, error) {
 	cdb[1] = 0x08            // ATA protocol (4 << 1, PIO data-in)
 	cdb[2] = 0x0e            // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
 	cdb[4] = _SMART_READ_LOG // feature LSB
-	cdb[6] = 0x01            // sector count
-	cdb[8] = logPage         // SMART log page number
-	cdb[10] = 0x4f           // low lba_mid
-	cdb[12] = 0xc2           // low lba_high
+	cdb[6] = 0x01            // sector count: transfer 1 sector (512 bytes)
+	cdb[8] = logPage         // SMART log page number (maps to LBA low byte)
+	cdb[10] = 0x4f           // LBA mid: SMART magic signature byte (0x4F)
+	cdb[12] = 0xc2           // LBA high: SMART magic signature byte (0xC2); together 0x4FC2 identifies a SMART command
 	cdb[14] = _ATA_SMART     // command
 
 	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
@@ -97,8 +97,8 @@ func (d *SataDevice) readSMARTData() (*AtaSmartPageRaw, error) {
 	cdb[1] = 0x08             // ATA protocol (4 << 1, PIO data-in)
 	cdb[2] = 0x0e             // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
 	cdb[4] = _SMART_READ_DATA // feature LSB
-	cdb[10] = 0x4f            // low lba_mid
-	cdb[12] = 0xc2            // low lba_high
+	cdb[10] = 0x4f            // LBA mid: SMART magic signature byte (0x4F)
+	cdb[12] = 0xc2            // LBA high: SMART magic signature byte (0xC2)
 	cdb[14] = _ATA_SMART      // command
 
 	respBuf := make([]byte, 512)
@@ -108,6 +108,7 @@ func (d *SataDevice) readSMARTData() (*AtaSmartPageRaw, error) {
 	}
 
 	page := AtaSmartPageRaw{}
+	// 362 = 2 bytes version + 30 attributes × 12 bytes each
 	if err := binary.Read(bytes.NewBuffer(respBuf[:362]), binary.LittleEndian, &page); err != nil {
 		return nil, err
 	}
@@ -162,9 +163,9 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 	cdb[1] = 0x08                   // ATA protocol (4 << 1, PIO data-in)
 	cdb[2] = 0x0e                   // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
 	cdb[4] = _SMART_READ_THRESHOLDS // feature LSB
-	cdb[8] = 0x1                    // low lba_low
-	cdb[10] = 0x4f                  // low lba_mid
-	cdb[12] = 0xc2                  // low lba_high
+	cdb[8] = 0x1                    // LBA low: required to be 1 for READ THRESHOLDS
+	cdb[10] = 0x4f                  // LBA mid: SMART magic signature byte (0x4F)
+	cdb[12] = 0xc2                  // LBA high: SMART magic signature byte (0xC2)
 	cdb[14] = _ATA_SMART            // command
 
 	respBuf := make([]byte, 512)
