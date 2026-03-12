@@ -35,7 +35,7 @@ func extractDatabase() ([]byte, error) {
 	d := os.TempDir()
 	defer os.RemoveAll(d)
 
-	cmd := exec.Command("curl", "https://raw.githubusercontent.com/mirror/smartmontools/master/drivedb.h")
+	cmd := exec.Command("curl", "https://raw.githubusercontent.com/smartmontools/smartmontools/main/drivedb/drivedb.h")
 	db, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func printPresets(f *os.File, presets string, printFirmwareBugs bool, useAttrNam
 
 	f.WriteString("map[int]ataDeviceAttr{")
 
-	parts := strings.Split(presets, " ")
+	parts := strings.Fields(presets)
 	i := 0
 
 	firmwareBug := []string{}
@@ -183,10 +183,11 @@ func printPresets(f *os.File, presets string, printFirmwareBugs bool, useAttrNam
 
 			att := strings.Split(value, ",")
 			if len(att) == 4 {
-				if att[3] == "HDD" {
+				switch att[3] {
+				case "HDD":
 					restriction = "ataDeviceAttributeRestrictionHDDOnly"
 					att = att[:3]
-				} else if att[3] == "SSD" {
+				case "SSD":
 					restriction = "ataDeviceAttributeRestrictionSSDOnly"
 					att = att[:3]
 				}
