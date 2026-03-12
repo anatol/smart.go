@@ -17,7 +17,7 @@ type GenericAttributes struct {
 	Written uint64
 	// PowerOnHours represents a power on time in hours
 	PowerOnHours uint64
-	// PowerCycles represents a power cycles
+	// PowerCycles represents the number of power cycles
 	PowerCycles uint64
 }
 
