@@ -450,7 +450,7 @@ const (
 	AtaDeviceAttributeTypeSec2Hour                 // formatting is hours = raw/3600; minutes = (raw-3600*hours)/60; seconds = raw%60
 	AtaDeviceAttributeTypeMin2Hour                 // formatting is hours = raw[0:32]/60; minutes = raw[0:32]%60; optional raw[32:48] as ???
 	AtaDeviceAttributeTypeHalfMin2Hour             // formatting is hours = raw/120; minutes = (raw-120*hours)/2
-	AtaDeviceAttributeTypeMsec24Hour32             // formatting is hours = raw[32:64]; milliseconds = raw[0:32]
+	AtaDeviceAttributeTypeMsec24Hour32             // formatting is hours = raw[0:32]; milliseconds = raw[32:64]
 	AtaDeviceAttributeTypeTempMinMax               // formatting is too complicated
 	AtaDeviceAttributeTypeTemp10X                  // formatting is temp = raw[0:32]/10 in Celsius
 )
@@ -670,7 +670,7 @@ func (a AtaSmartAttr) ParseAsDuration() (time.Duration, error) {
 		// 30-second counter
 		return time.Duration(a.ValueRaw) * 30 * time.Second, nil
 	case AtaDeviceAttributeTypeMsec24Hour32:
-		// hours + milliseconds
+		// hours = raw[0:32]; milliseconds = raw[32:64]
 		hours := a.ValueRaw & 0xffffffff
 		milliseconds := a.ValueRaw >> 32
 		return time.Duration(hours)*time.Hour + time.Duration(milliseconds)*time.Millisecond, nil
