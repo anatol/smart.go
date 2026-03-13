@@ -20,6 +20,7 @@ func TestNvmeSizes(t *testing.T) {
 }
 
 func TestSataSizes(t *testing.T) {
+	t.Parallel()
 	var d AtaIdentifyDevice
 	require.Equal(t, 27*2, int(unsafe.Offsetof(d.ModelNumberRaw)))
 	require.Equal(t, 75*2, int(unsafe.Offsetof(d.QueueDepth)))
