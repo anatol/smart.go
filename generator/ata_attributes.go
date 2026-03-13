@@ -28,7 +28,17 @@ func process() error {
 		return err
 	}
 
-	return printDeviceDatabase(db)
+	err = printDeviceDatabase(db)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("gofmt", "-w", "-s", *outputFile)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func extractDatabase() ([]byte, error) {
