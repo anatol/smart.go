@@ -1,5 +1,7 @@
 package smart
 
+import "errors"
+
 // https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf
 
 type ScsiDevice struct {
@@ -44,5 +46,5 @@ type ScsiInquiry struct {
 }
 
 func (d *ScsiDevice) ReadGenericAttributes() (*GenericAttributes, error) {
-	return nil, ErrOSUnsupported
+	return nil, errors.ErrUnsupported
 }
