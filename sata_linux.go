@@ -25,11 +25,7 @@ func OpenSata(name string) (*SataDevice, error) {
 		return nil, fmt.Errorf("it is not a SATA device")
 	}
 
-	dev := SataDevice{
-		fd,
-		nil,
-		0,
-	}
+	dev := SataDevice{fd: fd}
 
 	id, err := dev.Identify()
 	if err != nil {
