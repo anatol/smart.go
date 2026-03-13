@@ -334,14 +334,13 @@ func (a *AtaIdentifyDevice) IsGeneralPurposeLoggingCapable() bool {
 	// contains valid data (bit 14 set, bit 15 cleared). Bit 5 indicates GPL support.
 	enabled := uint16(1) << 14
 	enabledMask := uint16(0b11) << 14
-
 	glLoggingAttr := uint16(1) << 5
 
 	if a.CommandsSupported3&enabledMask == enabled {
-		return a.CommandsSupported3&enabledMask&glLoggingAttr == glLoggingAttr
+		return a.CommandsSupported3&glLoggingAttr != 0
 	}
 	if a.CommandsEnabled3&enabledMask == enabled {
-		return a.CommandsEnabled3&enabledMask&glLoggingAttr == glLoggingAttr
+		return a.CommandsEnabled3&glLoggingAttr != 0
 	}
 
 	return false
@@ -568,11 +567,7 @@ func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 	a := GenericAttributes{}
 	for _, attr := range page.Attrs {
 		switch attr.Name {
-		case "Airflow_Temperature_Cel":
-			fallthrough
-		case "Temperature_Celsius":
-			fallthrough
-		case "Temperature_Celsius_X10":
+		case "Airflow_Temperature_Cel", "Temperature_Celsius", "Temperature_Celsius_X10":
 			current, _, _, _, err := attr.ParseAsTemperature()
 			if err != nil {
 				return nil, err
@@ -825,19 +820,12 @@ func (d *SataDevice) ReadSMARTData() (*AtaSmartPage, error) {
 func computeAttributeRawValue(mapping ataDeviceAttr, vendorBytes [6]byte, reserved uint8, current uint8, worst uint8) uint64 {
 	byteOrder := mapping.byteOrder
 	switch mapping.typ {
-	case AtaDeviceAttributeTypeRaw64:
-		fallthrough
-	case AtaDeviceAttributeTypeHex64:
+	case AtaDeviceAttributeTypeRaw64, AtaDeviceAttributeTypeHex64:
 		// 64-bit value: include current and worst in addition to the 6 vendor bytes
 		byteOrder = "543210wv"
 
-	case AtaDeviceAttributeTypeRaw56:
-		fallthrough
-	case AtaDeviceAttributeTypeHex56:
-		fallthrough
-	case AtaDeviceAttributeTypeRaw24DivRaw32:
-		fallthrough
-	case AtaDeviceAttributeTypeMsec24Hour32:
+	case AtaDeviceAttributeTypeRaw56, AtaDeviceAttributeTypeHex56,
+		AtaDeviceAttributeTypeRaw24DivRaw32, AtaDeviceAttributeTypeMsec24Hour32:
 		// 56-bit value: include reserved byte ahead of the 6 vendor bytes
 		byteOrder = "r543210"
 
