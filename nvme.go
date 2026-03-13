@@ -8,7 +8,8 @@ type Uint128 struct {
 	Val [2]uint64
 }
 
-// Identify Controller Data Structure (CNS 01h)
+// NvmeIdentController is the Identify Controller Data Structure returned for CNS 01h.
+// Defined in NVMe Base Specification 2.0b, Figure 275.
 // The Identify Controller data structure is returned to the host for the controller processing
 // the command.
 type NvmeIdentController struct {
@@ -686,28 +687,175 @@ type NvmeIdentController struct {
 	// the controller does not support the Crypto Erase sanitize
 	// operation.
 	Sanicap uint32
-	_       [180]byte // ...
-	Sqes    uint8     // Submission Queue Entry Size
-	Cqes    uint8     // Completion Queue Entry Size
-	_       [2]byte   // (defined in NVMe 1.3 spec)
+	// Host Memory Buffer Minimum Descriptor Entry Size (HMMINDS): This field indicates the
+	// minimum number of Host Memory Buffer Descriptor Entries, each of size 16 bytes, in a
+	// Host Memory Buffer Descriptor List. If the HMPRE field is cleared to 0h, then this field
+	// is reserved.
+	Hmminds uint32
+	// Host Memory Maximum Descriptors Entries (HMMAXD): This field indicates the maximum
+	// number of Host Memory Buffer Descriptor Entries supported for the Host Memory Buffer
+	// feature. If the HMPRE field is cleared to 0h, then this field is reserved.
+	Hmmaxd uint16
+	// NVM Set Identifier Maximum (NSETIDMAX): This field indicates the maximum value of a
+	// valid NVM Set Identifier for the NVM subsystem. This field shall be cleared to 0h if NVM
+	// Sets are not supported.
+	Nsetidmax uint16
+	// Endurance Group Identifier Maximum (ENDGIDMAX): This field indicates the maximum
+	// value of a valid Endurance Group Identifier for the NVM subsystem. This field shall be
+	// cleared to 0h if Endurance Groups are not supported.
+	Endgidmax uint16
+	// ANA Transition Time (ANATT): This field indicates the maximum time in seconds that
+	// the controller takes to transition between ANA states. This field shall be cleared to 0h
+	// if Asymmetric Namespace Access Reporting is not supported.
+	Anatt uint8
+	// Asymmetric Namespace Access Capabilities (ANACAP): This field indicates the ANA
+	// log page capabilities supported by the controller.
+	// Bit 7: if set to '1', the controller is able to report ANA Persistent Loss state.
+	// Bit 6: if set to '1', ANAGRPID 0h in the ANA Group Descriptor is supported.
+	// Bits 5:4: Reserved.
+	// Bit 3: if set to '1', the controller is able to report ANA Change state.
+	// Bit 2: if set to '1', the controller is able to report ANA Non-Optimized state.
+	// Bit 1: if set to '1', the controller is able to report ANA Inaccessible state.
+	// Bit 0: if set to '1', the controller is able to report ANA Optimized state.
+	Anacap uint8
+	// ANA Group Identifier Maximum (ANAGRPMAX): This field indicates the maximum value
+	// of a valid ANA Group Identifier for the NVM subsystem. This field shall be cleared to 0h
+	// if Asymmetric Namespace Access Reporting is not supported.
+	Anagrpmax uint32
+	// Number of ANA Group Identifiers (NANAGRPID): This field indicates the number of ANA
+	// Group Identifiers supported by this controller. This field shall be cleared to 0h if
+	// Asymmetric Namespace Access Reporting is not supported.
+	Nanagrpid uint32
+	// Persistent Event Log Size (PELS): This field indicates the Persistent Event Log page
+	// size supported by the controller in units of 64 KiB. A value of 0h indicates that the
+	// Persistent Event Log feature is not supported.
+	Pels uint32
+	// Domain Identifier (DOMAINID): This field indicates the domain that contains this
+	// controller. This field is only valid if the Multi-Domain Subsystem (MDS) bit in CTRATT
+	// is set to '1'.
+	Domainid uint16
+	// Key Per I/O Capabilities (KPIOC): This field indicates Key Per I/O capabilities.
+	// Bit 0: if set to '1', the controller supports Key Per I/O (refer to section 8.26).
+	// Bits 7:1: Reserved.
+	Kpioc uint8
+	_ uint8
+	// Maximum Processing Time For Firmware Activation Without Reset (MPTFAWR): This field
+	// indicates the maximum time in milliseconds that the controller takes to process a firmware
+	// activation that does not require a reset. A value of 0h indicates this field is not reported.
+	Mptfawr uint16
+	_ [6]byte
+	// Maximum Endurance Group Capacity (MEGCAP): This field indicates the maximum
+	// capacity of an Endurance Group in bytes. A value of 0h indicates this field is not
+	// supported. Shall be supported if Endurance Groups are supported.
+	Megcap Uint128
+	_ [128]byte
+	// Submission Queue Entry Size (SQES): This field indicates the required and maximum
+	// Submission Queue entry sizes for the I/O command set currently active. Bits 7:4 specify
+	// the maximum SQ entry size; bits 3:0 specify the required (minimum) SQ entry size.
+	// Both are encoded as power of two (2^n). For the NVM command set, the required size
+	// is 6h (64 bytes) and the maximum is 6h.
+	Sqes uint8
+	// Completion Queue Entry Size (CQES): This field indicates the required and maximum
+	// Completion Queue entry sizes for the I/O command set currently active. Bits 7:4 specify
+	// the maximum CQ entry size; bits 3:0 specify the required (minimum) CQ entry size.
+	// Both are encoded as power of two (2^n). For the NVM command set, the required size
+	// is 4h (16 bytes) and the maximum is 4h.
+	Cqes uint8
+	// Maximum Outstanding Commands (MAXCMD): This field indicates the maximum number
+	// of commands that the controller processes at one time for a particular queue. This is a
+	// 0's based value. A value of 0h indicates no limit on outstanding commands per queue.
+	Maxcmd uint16
 	// Number of Namespaces (NN): This field indicates the maximum value of a valid NSID
 	// for the NVM subsystem. Refer to the MNAN field for the number of supported
 	// namespaces in the NVM subsystem.
-	Nn    uint32                  // Number of Namespaces
-	Oncs  uint16                  // Optional NVM Command Support
-	Fuses uint16                  // Fused Operation Support
-	Fna   uint8                   // Format NVM Attributes
-	Vwc   uint8                   // Volatile Write Cache
-	Awun  uint16                  // Atomic Write Unit Normal
-	Awupf uint16                  // Atomic Write Unit Power Fail
-	Nvscc uint8                   // NVM Vendor Specific Command Configuration
-	_     uint8                   // ...
-	Acwu  uint16                  // Atomic Compare & Write Unit
-	_     [2]byte                 // ...
-	Sgls  uint32                  // SGL Support
-	_     [1508]byte              // ...
-	Psd   [32]NvmeIdentPowerState // Power State Descriptors
-	Vs    [1024]byte              // Vendor Specific
+	// Number of Namespaces (NN): This field indicates the maximum value of a valid NSID for
+	// the NVM subsystem. Refer to the MNAN field for the total number of supported namespaces.
+	Nn uint32
+	// Optional NVM Command Support (ONCS): This field indicates the optional NVM commands
+	// and features supported by the controller.
+	// Bit 0: Compare command supported. Bit 1: Write Uncorrectable supported. Bit 2: Dataset
+	// Management supported. Bit 3: Write Zeroes supported. Bit 4: Save field in Set/Get Features
+	// supported. Bit 5: Reservations supported. Bit 6: Timestamp feature supported.
+	// Bit 7: Verify command supported. Bit 8: Copy command supported.
+	Oncs uint16
+	// Fused Operation Support (FUSES): This field indicates the fused operations that the
+	// controller supports.
+	// Bit 0: if set to '1', the Compare and Write fused operation is supported.
+	// Bits 15:1: Reserved.
+	Fuses uint16
+	// Format NVM Attributes (FNA): This field indicates attributes for the Format NVM command.
+	// Bit 0: if set to '1', format applies to all namespaces (not per-namespace). If cleared to '0',
+	//        format is supported on a per namespace basis.
+	// Bit 1: if set to '1', any secure erase performed applies to all namespaces. If cleared to
+	//        '0', secure erase applies to the namespace being formatted.
+	// Bit 2: if set to '1', cryptographic erase is supported as part of a secure erase.
+	Fna uint8
+	// Volatile Write Cache (VWC): This field indicates attributes related to the presence of
+	// a volatile write cache in the implementation.
+	// Bit 0 (WCE): if set to '1', a volatile write cache is present. The host may issue Set
+	//              Features with the Volatile Write Cache feature identifier to control write cache.
+	// Bits 2:1 (NSWCO): No-Flush Supported – if 10b, NSAS field is supported.
+	Vwc uint8
+	// Atomic Write Unit Normal (AWUN): This field indicates the size of the write operation
+	// guaranteed to be written atomically during normal operation. A value of 0h indicates
+	// one logical block. All other values are 0's based multiples. FFFFh means all commands
+	// are atomic regardless of size. Refer to section 2.1.4.
+	Awun uint16
+	// Atomic Write Unit Power Fail (AWUPF): This field indicates the size of the write
+	// operation guaranteed to be written atomically during a power fail or error condition.
+	// A value of 0h indicates one logical block. Refer to section 2.1.4.
+	Awupf uint16
+	// I/O Command Set Vendor Specific Command Configuration (NVSCC): This field indicates
+	// the configuration settings for I/O Command Set Vendor Specific command handling.
+	// Bit 0: if set to '1', all I/O Vendor Specific Commands use the format defined in the spec.
+	//        If cleared to '0', the format of all I/O Vendor Specific Commands is vendor specific.
+	// Bits 7:1: Reserved.
+	Nvscc uint8
+	// Namespace Write Protection Capabilities (NWPC): This field indicates the optional
+	// namespace write protection capabilities supported by the controller.
+	// Bit 2 (PERMANENT): if set to '1', the controller supports Permanent Namespace Write Protect.
+	// Bit 1 (WRITE_PROTECT_UNTIL_POWER_CYCLE): if set to '1', the controller supports Write
+	//        Protect Until Power Cycle state and Permanent Namespace Write Protect state.
+	// Bit 0 (NO_WRITE_PROTECT): if set to '1', the controller supports the No Write Protect state
+	//        and the Write Protect state. If set to '0', namespace write protection is not supported.
+	// Bits 7:3: Reserved.
+	Nwpc uint8
+	// Atomic Compare & Write Unit (ACWU): This field indicates the size of the write operation
+	// guaranteed to be written atomically to the NVM for a Compare and Write fused command.
+	// A value of 0h indicates one logical block. Refer to section 2.1.4.
+	Acwu uint16
+	// I/O Command Set Format Supported (OCFS): This field indicates the optional Copy command
+	// source format descriptors supported by the controller.
+	// Bit 1: if set to '1', the controller supports Copy Format 1 (Source Range Entries Format 1h).
+	// Bit 0: if set to '1', the controller supports Copy Format 0 (Source Range Entries Format 0h).
+	// Bits 15:2: Reserved.
+	Ocfs uint16
+	// SGL Support (SGLS): This field indicates the Scatter Gather List support for NVM command
+	// set commands. Bits 1:0 indicate whether SGLs are supported: 00b = not supported,
+	// 01b = supported (no additional requirements), 10b = supported (keyed SGL supported).
+	// Bits 3:2 indicate if Keyed SGL Data Block descriptor is supported.
+	// Bit 20: if set to '1', the SGL Bit Bucket descriptor is supported.
+	// Bit 21: if set to '1', the byte aligned contiguous physical buffer SGL is supported.
+	Sgls uint32
+	// Maximum Number of Allowed Namespaces (MNAN): This field indicates the maximum
+	// number of namespaces supported by the NVM subsystem. A value of 0h indicates this
+	// field is not supported; use the NN field instead.
+	Mnan uint32
+	// Maximum Domain Namespace Attachments (MAXDNA): This field indicates the maximum
+	// number of namespace-to-controller attachments allowed in the domain. A value of 0h
+	// indicates no reported limit.
+	Maxdna Uint128
+	// Maximum I/O Controller Namespace Attachments (MAXCNA): This field indicates the
+	// maximum number of namespaces that may be attached to this I/O controller. A value
+	// of 0h indicates no reported limit.
+	Maxcna uint32
+	_      [1484]byte
+	// Power State Descriptors (PSD0–PSD31): Each entry describes the characteristics of
+	// an NVMe power state. The number of valid entries is (NPSS + 1). Entries beyond NPSS
+	// are reserved.
+	Psd [32]NvmeIdentPowerState
+	// Vendor Specific (VS): This range of bytes is allocated for vendor specific usage.
+	Vs [1024]byte
 } // 4096 bytes
 
 func (c *NvmeIdentController) ModelNumber() string {
@@ -722,24 +870,62 @@ func (c *NvmeIdentController) FirmwareRev() string {
 	return string(bytes.TrimSpace(c.FirmwareRevRaw[:]))
 }
 
+// NvmeIdentPowerState is the Power State Descriptor structure.
+// Defined in NVMe Base Specification 2.0b, Figure 279.
 type NvmeIdentPowerState struct {
-	MaxPower        uint16 // Maximum Power (specified in MaxPowerScale units)
-	_               uint8
-	Flags           uint8  // bit 0 - MaxPowerScale, bit 1 - Non-Operational State
-	EntryLat        uint32 // Entry Latency
-	ExitLat         uint32 // Exit Latency
-	ReadThroughput  uint8
-	ReadLatency     uint8
+	// Maximum Power (MP): This field indicates the maximum power consumed by the NVM
+	// subsystem in this power state. The power in Watts is equal to the value in this field
+	// multiplied by the scale factor indicated by the MXPS bit. A value of 0h indicates
+	// Maximum Power is not reported.
+	MaxPower uint16
+	_ uint8
+	// Flags:
+	// Bit 0 (MXPS): Maximum Power Scale. If set to '1', the value in the MP field is in units
+	//   of 0.0001 W. If cleared to '0', the value in the MP field is in units of 0.01 W.
+	// Bit 1 (NOPS): Non-Operational State. If set to '1', this power state is non-operational.
+	//   If cleared to '0', this is an operational power state.
+	Flags uint8
+	// Entry Latency (ENLAT): This field indicates the maximum entry latency in microseconds
+	// associated with entering this power state.
+	EntryLat uint32
+	// Exit Latency (EXLAT): This field indicates the maximum exit latency in microseconds
+	// associated with exiting this power state.
+	ExitLat uint32
+	// Relative Read Throughput (RRT): This field indicates the relative read throughput
+	// associated with this power state. Lower values indicate higher relative throughput.
+	ReadThroughput uint8
+	// Relative Read Latency (RRL): This field indicates the relative read latency associated
+	// with this power state. Lower values indicate lower relative latency.
+	ReadLatency uint8
+	// Relative Write Throughput (RWT): This field indicates the relative write throughput
+	// associated with this power state. Lower values indicate higher relative throughput.
 	WriteThroughput uint8
-	WriteLatency    uint8
-	IdlePower       uint16
-	IdleScale       uint8
-	_               uint8
-	ActivePower     uint16
-	ActiveWorkScale uint8 // Active Power Workload + Active Power Scale
-	_               [9]byte
+	// Relative Write Latency (RWL): This field indicates the relative write latency associated
+	// with this power state. Lower values indicate lower relative latency.
+	WriteLatency uint8
+	// Idle Power (IDLP): This field indicates the typical power consumed by the NVM subsystem
+	// over 30 seconds in this power state when idle. The scale is set by the IPS field.
+	// A value of 0h indicates Idle Power is not reported.
+	IdlePower uint16
+	// Idle Power Scale (IPS): This field indicates the scale for the Idle Power field.
+	// 00b: Not reported. 01b: 0.0001 W. 10b: 0.01 W. 11b: Reserved.
+	IdleScale uint8
+	_ uint8
+	// Active Power (ACTP): This field indicates the largest average power consumed by the
+	// NVM subsystem over a 10 second period in this power state with the workload indicated
+	// in the APW field. The scale is set by the APS field. A value of 0h indicates not reported.
+	ActivePower uint16
+	// Active Power Workload + Scale (APW/APS):
+	// Bits 2:0 (APW): Active Power Workload – the workload used to calculate ACTP.
+	//   000b: No workload. 001b: Workload 1 (extended idle). 010b: Workload 2 (heavy read).
+	// Bits 5:3: Reserved.
+	// Bits 7:6 (APS): Active Power Scale. 00b: Not reported. 01b: 0.0001 W. 10b: 0.01 W.
+	ActiveWorkScale uint8
+	_ [9]byte
 }
 
+// NvmeLBAF is the LBA Format data structure used in the Identify Namespace response.
+// Defined in NVMe Base Specification 2.0b, Figure 282 (NVM Command Set Specific).
 type NvmeLBAF struct {
 	// Metadata Size (MS): This field indicates the number of metadata bytes provided per LBA based
 	// on the LBA Data Size indicated. If there is no metadata supported, then this field shall be cleared
@@ -766,6 +952,8 @@ type NvmeLBAF struct {
 	Rp uint8 // Relative Performance
 }
 
+// NvmeIdentNamespace is the Identify Namespace Data Structure returned for CNS 00h.
+// Defined in NVMe Base Specification 2.0b, Figure 281 (NVM Command Set Specific).
 type NvmeIdentNamespace struct {
 	// Namespace Size (NSZE): This field indicates the total size of the namespace in logical
 	// blocks. A namespace of size n consists of LBA 0 through (n - 1). The number of logical
@@ -1128,10 +1316,13 @@ type NvmeIdentNamespace struct {
 	// identifier in this field, then this field shall be cleared to 0h. Refer to the Unique Identifier
 	// section in the NVMe Base Specification.
 	Eui64 [8]byte // IEEE Extended Unique Identifier
-	// LBA Format Support (LBAF): This field indicates the LBA format N that is supported
-	// by the controller.
-	Lbaf [64]NvmeLBAF // LBA Format Support
-	// Vendor Specific
+	// LBA Format Support (LBAF 0–63): Each entry describes an LBA format (sector size and
+	// metadata size combination) supported by this namespace. The number of valid entries is
+	// indicated by NLBAF. The active format is indicated by FLBAS. Entries beyond NLBAF are
+	// invalid. Up to 64 formats are supported when the LBA Format Extension Enable (LBAFEE)
+	// feature is active; otherwise only the first 16 entries (LBAF 0–15) are valid.
+	Lbaf [64]NvmeLBAF
+	// Vendor Specific (VS): This range of bytes is allocated for vendor specific usage.
 	Vs [3712]byte
 } // 4096 bytes
 
@@ -1139,71 +1330,169 @@ func (ns *NvmeIdentNamespace) LbaSize() uint64 {
 	return uint64(1) << ns.Lbaf[ns.Flbas&0xf].Ds
 }
 
+// NvmeSMARTLog is the SMART / Health Information log page (Log Identifier 02h).
+// Defined in NVMe Base Specification 2.0b, Figure 207.
+// This log page is retrieved via the Get Log Page command.
 type NvmeSMARTLog struct {
-	CritWarning            uint8  // Critical Warning
-	Temperature            uint16 // Composite Temperature
-	AvailSpare             uint8  // Available Spare
-	SpareThresh            uint8  // Available Spare Threshold
-	PercentUsed            uint8  // Percentage Used
-	EnduranceCritWarning   uint8  // Endurance Group Critical Warning Summary
-	_                      [25]byte
-	DataUnitsRead          Uint128   // Data Units Read
-	DataUnitsWritten       Uint128   // Data Units Written
-	HostReads              Uint128   // Host Read Commands
-	HostWrites             Uint128   // Host Write Commands
-	CtrlBusyTime           Uint128   // Controller Busy Time
-	PowerCycles            Uint128   // Power Cycles
-	PowerOnHours           Uint128   // Power On Hours
-	UnsafeShutdowns        Uint128   // Unsafe Shutdowns
-	MediaErrors            Uint128   // Media and Data Integrity Errors
-	NumErrLogEntries       Uint128   // Number of Error Information Log Entries
-	WarningTempTime        uint32    // Warning Composite Temperature Time
-	CritCompTime           uint32    // Critical Composite Temperature Time
-	TempSensor             [8]uint16 // Temperature Sensors
-	ThermalTransitionCount [2]uint32 // Thermal Management Transition Count
-	ThermalManagementTime  [2]uint32 // Total Time For Thermal Management
-	_                      [280]byte
+	// Critical Warning (CW): This field indicates critical warnings for the state of the
+	// controller. Each bit corresponds to a critical warning type; multiple bits may be set.
+	// Bit 0: Available spare space has fallen below the threshold.
+	// Bit 1: A temperature is above an over temperature threshold or below an under
+	//        temperature threshold.
+	// Bit 2: NVM subsystem reliability has been degraded due to significant media related
+	//        errors or an internal error that degrades reliability.
+	// Bit 3: The media has been placed in read only mode.
+	// Bit 4: The volatile memory backup device has failed (for controllers with a volatile
+	//        write cache).
+	// Bit 5: The Persistent Memory Region has become read-only or unreliable.
+	// Bits 7:6: Reserved.
+	CritWarning uint8
+	// Composite Temperature: Contains a composite temperature value in Kelvins that
+	// represents the current temperature of the overall subsystem. How this value is computed
+	// is implementation specific and may not represent the temperature of any physical point
+	// in the NVM subsystem.
+	Temperature uint16
+	// Available Spare (AVL_SPARE): Contains a normalized percentage (0 to 100%) of the
+	// remaining spare capacity available.
+	AvailSpare uint8
+	// Available Spare Threshold (SPARE_THRESH): When the Available Spare falls below the
+	// threshold indicated in this field, an asynchronous event completion may occur. The value
+	// is indicated as a normalized percentage (0 to 100%).
+	SpareThresh uint8
+	// Percentage Used (PU): Contains a vendor specific estimate of the percentage of NVM
+	// subsystem life used based on the actual usage and the manufacturer's prediction of NVM
+	// life. A value of 100 indicates that the estimated endurance has been consumed, but may
+	// not indicate a failure. Values may exceed 100 and 255 indicates 255% or more.
+	PercentUsed uint8
+	// Endurance Group Critical Warning Summary (EGCWS): This field indicates critical
+	// warnings for the state of Endurance Groups. Each bit corresponds to a critical warning
+	// type for an Endurance Group; set to '1' if any Endurance Group has the condition.
+	// Bit 0: Available spare has fallen below the threshold.
+	// Bit 2: Reliability degraded due to media related errors or internal error.
+	// Bit 3: Endurance Group has been placed in read only mode.
+	EnduranceCritWarning uint8
+	_ [25]byte
+	// Data Units Read: Contains the number of 512-byte data units the host has read from
+	// the controller as part of processing a SMART Data Units Read command. This value does
+	// not include metadata. This value is reported in thousands (i.e., a value of 1 corresponds
+	// to 1,000 units of 512 bytes read). A value of 0h indicates the field is not reported.
+	DataUnitsRead Uint128
+	// Data Units Written: Contains the number of 512-byte data units the host has written
+	// to the controller as part of processing Write commands. This value does not include
+	// metadata. This value is reported in thousands (i.e., a value of 1 corresponds to 1,000
+	// units of 512 bytes written). A value of 0h indicates the field is not reported.
+	DataUnitsWritten Uint128
+	// Host Read Commands: Contains the number of read commands completed by the
+	// controller. For the NVM command set, this is the number of Compare and Read commands.
+	HostReads Uint128
+	// Host Write Commands: Contains the number of write commands completed by the
+	// controller. For the NVM command set, this is the number of Write commands.
+	HostWrites Uint128
+	// Controller Busy Time: Contains the amount of time the controller is busy with I/O
+	// commands, in minutes. The controller is busy when there is a command outstanding.
+	CtrlBusyTime Uint128
+	// Power Cycles: Contains the number of power cycles.
+	PowerCycles Uint128
+	// Power On Hours: Contains the number of hours the controller is powered on. The
+	// controller may use a vendor specific method of calculation (e.g., the controller may
+	// not account for power states with low refresh rates).
+	PowerOnHours Uint128
+	// Unsafe Shutdowns: Contains the number of unsafe shutdowns. This count is incremented
+	// when a shutdown notification is not received prior to loss of power.
+	UnsafeShutdowns Uint128
+	// Media and Data Integrity Errors: Contains the number of occurrences where the
+	// controller detected an unrecovered data integrity error. Errors such as uncorrectable ECC,
+	// CRC checksum failure, or LBA tag mismatch are included in this field.
+	MediaErrors Uint128
+	// Number of Error Information Log Entries: Contains the number of Error Information log
+	// entries over the life of the controller. This value is preserved across power states,
+	// power cycles, and Controller Level Resets.
+	NumErrLogEntries Uint128
+	// Warning Composite Temperature Time: Contains the amount of time in minutes that the
+	// controller is operational and the Composite Temperature is greater than or equal to the
+	// Warning Composite Temperature Threshold (WCTEMP) field and less than the Critical
+	// Composite Temperature Threshold (CCTEMP) field.
+	WarningTempTime uint32
+	// Critical Composite Temperature Time: Contains the amount of time in minutes that the
+	// controller is operational and the Composite Temperature is greater than or equal to the
+	// Critical Composite Temperature Threshold (CCTEMP) field.
+	CritCompTime uint32
+	// Temperature Sensor 1–8: Contains the current temperature in Kelvins reported by
+	// temperature sensors 1–8. A value of 0h indicates the sensor is not implemented.
+	TempSensor [8]uint16
+	// Thermal Management Temperature 1 Transition Count: Contains the number of times the
+	// controller transitioned to lower power active power states or performed vendor specific
+	// thermal management actions while minimizing the impact on performance.
+	// Index 0 = Thermal Management Temperature 1, Index 1 = Temperature 2.
+	ThermalTransitionCount [2]uint32
+	// Total Time For Thermal Management: Contains the number of seconds the controller
+	// transitioned to lower power active power states or performed vendor specific thermal
+	// management actions. Index 0 = Temperature 1, Index 1 = Temperature 2.
+	ThermalManagementTime [2]uint32
+	_ [280]byte
 } // 512 bytes
 
+// Admin command opcodes. Defined in NVMe Base Specification 2.0b, Figure 138.
 const (
-	nvmeAdminDeleteSq      = 0x00
-	nvmeAdminCreateSq      = 0x01
-	nvmeAdminGetLogPage    = 0x02
-	nvmeAdminDeleteCq      = 0x04
-	nvmeAdminCreateCq      = 0x05
-	nvmeAdminIdentify      = 0x06
-	nvmeAdminAbortCmd      = 0x08
-	nvmeAdminSetFeatures   = 0x09
-	nvmeAdminGetFeatures   = 0x0a
-	nvmeAdminAsyncEvent    = 0x0c
-	nvmeAdminNsMgmt        = 0x0d
-	nvmeAdminActivateFw    = 0x10
-	nvmeAdminDownloadFw    = 0x11
-	nvmeAdminDevSelfTest   = 0x14
-	nvmeAdminNsAttach      = 0x15
-	nvmeAdminKeepAlive     = 0x18
-	nvmeAdminDirectiveSend = 0x19
-	nvmeAdminDirectiveRecv = 0x1a
-	nvmeAdminVirtualMgmt   = 0x1c
-	nvmeAdminNvmeMiSend    = 0x1d
-	nvmeAdminNvmeMiRecv    = 0x1e
-	nvmeAdminDbbuf         = 0x7C
-	nvmeAdminFormatNvm     = 0x80
-	nvmeAdminSecuritySend  = 0x81
-	nvmeAdminSecurityRecv  = 0x82
-	nvmeAdminSanitizeNvm   = 0x84
-	nvmeAdminGetLbaStatus  = 0x86
-	nvmeAdminVendorStart   = 0xC0
+	nvmeAdminDeleteSq      = 0x00 // Delete I/O Submission Queue
+	nvmeAdminCreateSq      = 0x01 // Create I/O Submission Queue
+	nvmeAdminGetLogPage    = 0x02 // Get Log Page
+	nvmeAdminDeleteCq      = 0x04 // Delete I/O Completion Queue
+	nvmeAdminCreateCq      = 0x05 // Create I/O Completion Queue
+	nvmeAdminIdentify      = 0x06 // Identify
+	nvmeAdminAbortCmd      = 0x08 // Abort
+	nvmeAdminSetFeatures   = 0x09 // Set Features
+	nvmeAdminGetFeatures   = 0x0a // Get Features
+	nvmeAdminAsyncEvent    = 0x0c // Asynchronous Event Request
+	nvmeAdminNsMgmt        = 0x0d // Namespace Management
+	nvmeAdminActivateFw    = 0x10 // Firmware Commit (activate)
+	nvmeAdminDownloadFw    = 0x11 // Firmware Image Download
+	nvmeAdminDevSelfTest   = 0x14 // Device Self-test
+	nvmeAdminNsAttach      = 0x15 // Namespace Attachment
+	nvmeAdminKeepAlive     = 0x18 // Keep Alive
+	nvmeAdminDirectiveSend = 0x19 // Directive Send
+	nvmeAdminDirectiveRecv = 0x1a // Directive Receive
+	nvmeAdminVirtualMgmt   = 0x1c // Virtualization Management
+	nvmeAdminNvmeMiSend    = 0x1d // NVMe-MI Send
+	nvmeAdminNvmeMiRecv    = 0x1e // NVMe-MI Receive
+	nvmeAdminCapacityMgmt  = 0x20 // Capacity Management (NVMe 2.0)
+	nvmeAdminLockdown      = 0x24 // Lockdown (NVMe 2.0)
+	nvmeAdminDbbuf         = 0x7C // Doorbell Buffer Config
+	nvmeAdminFormatNvm     = 0x80 // Format NVM
+	nvmeAdminSecuritySend  = 0x81 // Security Send
+	nvmeAdminSecurityRecv  = 0x82 // Security Receive
+	nvmeAdminSanitizeNvm   = 0x84 // Sanitize
+	nvmeAdminGetLbaStatus  = 0x86 // Get LBA Status
+	nvmeAdminVendorStart   = 0xC0 // Start of vendor-specific opcodes (C0h–FFh)
 )
 
+// Log page identifiers for the Get Log Page command.
+// Defined in NVMe Base Specification 2.0b, Figure 194.
 const (
-	nvmeLogSupportedPages    = 0x0
-	nvmeLogErrorInformation  = 0x1
-	nvmeLogSmartInformation  = 0x2
-	nvmeLogFirmwareInfo      = 0x3
-	nvmeLogChangedNamespace  = 0x4
-	nvmeLogCommandsSupported = 0x5
-	nvmeLogDeviceSelftest    = 0x6
+	nvmeLogSupportedPages              = 0x00 // Supported Log Pages
+	nvmeLogErrorInformation            = 0x01 // Error Information
+	nvmeLogSmartInformation            = 0x02 // SMART / Health Information
+	nvmeLogFirmwareInfo                = 0x03 // Firmware Slot Information
+	nvmeLogChangedNamespace            = 0x04 // Changed Namespace List
+	nvmeLogCommandsSupported           = 0x05 // Commands Supported and Effects
+	nvmeLogDeviceSelftest              = 0x06 // Device Self-test
+	nvmeLogTelemetryHostInitiated      = 0x07 // Telemetry Host-Initiated
+	nvmeLogTelemetryCtrlInitiated      = 0x08 // Telemetry Controller-Initiated
+	nvmeLogEnduranceGroupInfo          = 0x09 // Endurance Group Information
+	nvmeLogPredictableLatencyPerNvmSet = 0x0a // Predictable Latency Per NVM Set
+	nvmeLogPredictableLatencyEventAgg  = 0x0b // Predictable Latency Event Aggregate
+	nvmeLogAsymmetricNamespaceAccess   = 0x0c // Asymmetric Namespace Access (ANA)
+	nvmeLogPersistentEventLog          = 0x0d // Persistent Event Log
+	nvmeLogLBAStatusInformation        = 0x0e // LBA Status Information (NVM Command Set)
+	nvmeLogEnduranceGroupEventAgg      = 0x0f // Endurance Group Event Aggregate
+	nvmeLogMediaUnitStatus             = 0x10 // Media Unit Status (NVMe 2.0)
+	nvmeLogSupportedCapacityConfig     = 0x11 // Supported Capacity Configuration List (NVMe 2.0)
+	nvmeLogFeatureIDsEffects           = 0x12 // Feature Identifiers Supported and Effects
+	nvmeLogNvmeMiCommandsEffects       = 0x13 // NVMe-MI Commands Supported and Effects
+	nvmeLogCommandFeatureLockdown      = 0x14 // Command and Feature Lockdown (NVMe 2.0)
+	nvmeLogBootPartition               = 0x15 // Boot Partition
+	nvmeLogRotationalMediaInfo         = 0x16 // Rotational Media Information (NVMe 2.0)
+	nvmeLogVendorStart                 = 0xC0 // Start of vendor-specific log pages (C0h–FFh)
 )
 
 func (d *NVMeDevice) Type() string {
