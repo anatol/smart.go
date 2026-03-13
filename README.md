@@ -59,7 +59,7 @@ for _, disk := range block.Disks {
         switch sm := dev.(type) {
         case *smart.SataDevice:
             data, err := sm.ReadSMARTData()
-            attr, ok := data.Attrs[194]; ok { // attr.Name == "Temperature_Celsius"
+            if attr, ok := data.Attrs[194]; ok { // attr.Name == "Temperature_Celsius"
                 temp, min, max, overtempCounter, err := attr.ParseAsTemperature()
                 // min/max/counter are optional
             }
