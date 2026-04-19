@@ -35,11 +35,6 @@ func OpenScsi(name string) (*ScsiDevice, error) {
 		return nil, fmt.Errorf("not a direct access block device")
 	}
 
-	if bytes.Equal(i.VendorIdent[:], []byte(_SATA_IDENT)) {
-		unix.Close(fd)
-		return nil, fmt.Errorf("it is SATA device")
-	}
-
 	return &scsi, nil
 }
 

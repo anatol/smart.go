@@ -3,6 +3,7 @@ package smart
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ErrOSUnsupported is returned on unsupported operating systems.
@@ -31,14 +32,24 @@ type Device interface {
 }
 
 func Open(path string) (Device, error) {
-	n, nvmeErr := OpenNVMe(path)
-	if nvmeErr == nil {
-		_, _, err := n.Identify()
+	var nvmeErr error
+
+	// Only probe NVMe for paths that look like NVMe devices (/dev/nvme*).
+	// Sending NVMe admin ioctls to USB block devices permanently breaks
+	// the UAS transport on some bridges (e.g. Realtek RTL9201B), causing
+	// all subsequent SCSI commands to fail with DID_ERROR.
+	if strings.Contains(path, "/nvme") {
+		n, err := OpenNVMe(path)
 		if err == nil {
-			return n, nil
+			_, _, idErr := n.Identify()
+			if idErr == nil {
+				return n, nil
+			}
+			n.Close()
+			nvmeErr = fmt.Errorf("nvme identify: %w", idErr)
+		} else {
+			nvmeErr = err
 		}
-		n.Close()
-		nvmeErr = fmt.Errorf("nvme identify: %w", err)
 	}
 
 	a, sataErr := OpenSata(path)
@@ -51,5 +62,8 @@ func Open(path string) (Device, error) {
 		return s, nil
 	}
 
-	return nil, errors.Join(nvmeErr, sataErr, scsiErr)
+	if nvmeErr != nil {
+		return nil, errors.Join(nvmeErr, sataErr, scsiErr)
+	}
+	return nil, errors.Join(sataErr, scsiErr)
 }
