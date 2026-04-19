@@ -20,12 +20,40 @@ func OpenSata(name string) (*SataDevice, error) {
 		return nil, err
 	}
 
-	if !bytes.Equal(i.VendorIdent[:], []byte(_SATA_IDENT)) {
+	// Check if this is a direct access block device (Peripheral & 0x1f == 0)
+	// This is required for SAT (SCSI ATA Translation) devices
+	deviceType := i.Peripheral & 0x1f
+	if deviceType != 0 {
 		unix.Close(fd)
-		return nil, fmt.Errorf("it is not a SATA device")
+		return nil, fmt.Errorf("not a direct access block device (type=%d)", deviceType)
 	}
 
+	// Try to detect if this is a SATA device
+	// Standard SAT devices report "ATA     " in VendorIdent
+	// However, some USB bridges don't properly implement this and report
+	// the actual drive vendor instead. In such cases, we try ATA IDENTIFY
+	// to see if the device responds.
+	isLikelySAT := bytes.Equal(i.VendorIdent[:], []byte(_SATA_IDENT))
+
 	dev := SataDevice{fd: fd}
+
+	// For standard SAT identifiers, proceed directly
+	// For other direct access devices, try ATA IDENTIFY to see if it's a SAT device
+	if !isLikelySAT {
+		// Try ATA IDENTIFY to test if this device supports ATA commands
+		// This handles USB bridges that don't report "ATA     " properly
+		respBuf := make([]byte, 512)
+		cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
+		cdb[1] = 0x08                  // ATA protocol: bits [4:1] = 4 (PIO data-in), bit 0 = 0 (multiple commands)
+		cdb[2] = 0x0e                  // BYT_BLOK=1 (transfer length in 512-byte blocks), T_LENGTH=2 (from sector count field), T_DIR=1 (from device)
+		cdb[14] = _ATA_IDENTIFY_DEVICE // command
+
+		// If ATA IDENTIFY succeeds, this is a SAT device
+		if err := scsiSendCdb(fd, cdb[:], respBuf); err != nil {
+			unix.Close(fd)
+			return nil, fmt.Errorf("device does not respond to ATA IDENTIFY (not a SATA/SAT device): %w", err)
+		}
+	}
 
 	id, err := dev.Identify()
 	if err != nil {
