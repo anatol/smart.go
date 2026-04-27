@@ -3,11 +3,11 @@ module github.com/anatol/smart.go
 go 1.26
 
 require (
-	github.com/anatol/vmtest v0.0.0-20250627153117-302402d269a6
+	github.com/anatol/vmtest v0.0.0-20260313235012-c2b0479898b4
 	github.com/stretchr/testify v1.11.1
 	github.com/tmc/scp v0.0.0-20170824174625-f7b48647feef
-	golang.org/x/crypto v0.49.0
-	golang.org/x/sys v0.42.0
+	golang.org/x/crypto v0.50.0
+	golang.org/x/sys v0.43.0
 )
 
 require (
