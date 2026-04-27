@@ -246,7 +246,15 @@ type NvmeIdentController struct {
 	// NOTE:
 	// 1. If Read Recovery Levels are supported, then this bit shall be set to ‘1’.
 	Rrls uint16
-	_    [9]byte
+	// Boot Partition Capabilities (BPCAP): Indicates support details for boot partitions.
+	Bpcap uint8
+	_     uint8
+	// NVM Subsystem Shutdown Latency (NSSL): Typical NVM subsystem shutdown latency
+	// in microseconds.
+	Nssl uint32
+	_    [2]byte
+	// Power Loss Signaling Information (PLSI): Indicates power-loss signal behavior.
+	Plsi uint8
 	// Controller Type (CNTRLTYPE): This field specifies the controller type. A value of 0h
 	// indicates that the controller type is not reported.
 	// Implementations compliant to NVM Express Base Specification revision 1.4 or later shall
@@ -287,7 +295,9 @@ type NvmeIdentController struct {
 	// and CRD field is set to 11b in the CQE, then this value indicates the command retry
 	// delay time in units of 100 milliseconds.
 	Crdt3 uint16
-	_     [119]byte // ...
+	// Controller Reachability Capabilities (CRCAP): Indicates controller reachability behavior.
+	Crcap uint8
+	_     [118]byte // Reserved
 	// NVM Subsystem Report (NVMSR): This field reports information associated with the
 	// NVM subsystem. If the controller is compliant to the NVMe Management Interface
 	// Specification, then at least one bit in this field is set to ‘1’. If the NVM subsystem does
@@ -738,17 +748,23 @@ type NvmeIdentController struct {
 	// Bit 0: if set to '1', the controller supports Key Per I/O (refer to section 8.26).
 	// Bits 7:1: Reserved.
 	Kpioc uint8
-	_ uint8
+	_     uint8
 	// Maximum Processing Time For Firmware Activation Without Reset (MPTFAWR): This field
 	// indicates the maximum time in milliseconds that the controller takes to process a firmware
 	// activation that does not require a reset. A value of 0h indicates this field is not reported.
 	Mptfawr uint16
-	_ [6]byte
+	_       [6]byte
 	// Maximum Endurance Group Capacity (MEGCAP): This field indicates the maximum
 	// capacity of an Endurance Group in bytes. A value of 0h indicates this field is not
 	// supported. Shall be supported if Endurance Groups are supported.
 	Megcap Uint128
-	_ [128]byte
+	// Temperature Threshold Hysteresis Attributes (TMPTHHA): Indicates temperature threshold
+	// hysteresis behavior.
+	Tmpthha uint8
+	_       uint8
+	// Controller Quiesce Time (CQT): Time for controller quiesce operations.
+	Cqt uint16
+	_   [124]byte // Reserved
 	// Submission Queue Entry Size (SQES): This field indicates the required and maximum
 	// Submission Queue entry sizes for the I/O command set currently active. Bits 7:4 specify
 	// the maximum SQ entry size; bits 3:0 specify the required (minimum) SQ entry size.
@@ -849,7 +865,52 @@ type NvmeIdentController struct {
 	// maximum number of namespaces that may be attached to this I/O controller. A value
 	// of 0h indicates no reported limit.
 	Maxcna uint32
-	_      [1484]byte
+	// Optional Admin Command Queue Depth (OAQD): Maximum admin queue depth supported.
+	Oaqd uint32
+	// Recommended High Priority Interrupt Request Information (RHIRI).
+	Rhiri uint8
+	// Host Identifier Retention Time (HIRT).
+	Hirt uint8
+	// Controller Maximum Migration Ready Time (CMMRTD).
+	Cmmrtd uint16
+	// NVM Subsystem Maximum Migration Ready Time (NMMRTD).
+	Nmmrtd uint16
+	// Minimum Migration Receive Throughput Granularity (MINMRTG).
+	Minmrtg uint8
+	// Maximum Migration Receive Throughput Granularity (MAXMRTG).
+	Maxmrtg uint8
+	// Transport Attributes (TRATTR).
+	Trattr uint8
+	_      uint8
+	// Maximum Controller Unrecovered Data Migration Queue Depth (MCUDMQ).
+	Mcudmq uint16
+	// Maximum NVM Subsystem Unrecovered Data Migration Queue Depth (MNSUDMQ).
+	Mnsudmq uint16
+	// Maximum Controller Migration Requests (MCMR).
+	Mcmr uint16
+	// Maximum NVM Subsystem Controller Migration Requests (NMCMR).
+	Nmcmr uint16
+	// Maximum Controller Data Queue Pairs per Controller (MCDQPC).
+	Mcdqpc uint16
+	_      [180]byte
+	// NVM Subsystem NVMe Qualified Name (SUBNQN): UTF-8 NQN for the NVM subsystem.
+	SubnqnRaw [256]byte
+	_         [768]byte
+	// I/O Queue Command Capsule Supported Size (IOCCSZ): In units of 16 bytes.
+	Ioccsz uint32
+	// I/O Queue Response Capsule Supported Size (IORCSZ): In units of 16 bytes.
+	Iorcsz uint32
+	// In-Capsule Data Offset (ICDOFF): Applicable to I/O queues.
+	Icdoff uint16
+	// Fabrics Controller Attributes (FCATT).
+	Fcatt uint8
+	// Maximum SGL Data Block Descriptors (MSDBD).
+	Msdbd uint8
+	// Optional Fabrics Commands Support (OFCS).
+	Ofcs uint16
+	// Discovery Controller Type (DCTYPE).
+	Dctype uint8
+	_      [241]byte
 	// Power State Descriptors (PSD0–PSD31): Each entry describes the characteristics of
 	// an NVMe power state. The number of valid entries is (NPSS + 1). Entries beyond NPSS
 	// are reserved.
@@ -870,6 +931,10 @@ func (c *NvmeIdentController) FirmwareRev() string {
 	return string(bytes.TrimSpace(c.FirmwareRevRaw[:]))
 }
 
+func (c *NvmeIdentController) SubNQN() string {
+	return string(bytes.TrimRight(c.SubnqnRaw[:], "\x00"))
+}
+
 // NvmeIdentPowerState is the Power State Descriptor structure.
 // Defined in NVMe Base Specification 2.0b, Figure 279.
 type NvmeIdentPowerState struct {
@@ -878,7 +943,7 @@ type NvmeIdentPowerState struct {
 	// multiplied by the scale factor indicated by the MXPS bit. A value of 0h indicates
 	// Maximum Power is not reported.
 	MaxPower uint16
-	_ uint8
+	_        uint8
 	// Flags:
 	// Bit 0 (MXPS): Maximum Power Scale. If set to '1', the value in the MP field is in units
 	//   of 0.0001 W. If cleared to '0', the value in the MP field is in units of 0.01 W.
@@ -910,7 +975,7 @@ type NvmeIdentPowerState struct {
 	// Idle Power Scale (IPS): This field indicates the scale for the Idle Power field.
 	// 00b: Not reported. 01b: 0.0001 W. 10b: 0.01 W. 11b: Reserved.
 	IdleScale uint8
-	_ uint8
+	_         uint8
 	// Active Power (ACTP): This field indicates the largest average power consumed by the
 	// NVM subsystem over a 10 second period in this power state with the workload indicated
 	// in the APW field. The scale is set by the APS field. A value of 0h indicates not reported.
@@ -921,7 +986,7 @@ type NvmeIdentPowerState struct {
 	// Bits 5:3: Reserved.
 	// Bits 7:6 (APS): Active Power Scale. 00b: Not reported. 01b: 0.0001 W. 10b: 0.01 W.
 	ActiveWorkScale uint8
-	_ [9]byte
+	_               [9]byte
 }
 
 // NvmeLBAF is the LBA Format data structure used in the Identify Namespace response.
@@ -1371,7 +1436,7 @@ type NvmeSMARTLog struct {
 	// Bit 2: Reliability degraded due to media related errors or internal error.
 	// Bit 3: Endurance Group has been placed in read only mode.
 	EnduranceCritWarning uint8
-	_ [25]byte
+	_                    [25]byte
 	// Data Units Read: Contains the number of 512-byte data units the host has read from
 	// the controller as part of processing a SMART Data Units Read command. This value does
 	// not include metadata. This value is reported in thousands (i.e., a value of 1 corresponds
@@ -1429,7 +1494,7 @@ type NvmeSMARTLog struct {
 	// transitioned to lower power active power states or performed vendor specific thermal
 	// management actions. Index 0 = Temperature 1, Index 1 = Temperature 2.
 	ThermalManagementTime [2]uint32
-	_ [280]byte
+	_                     [280]byte
 } // 512 bytes
 
 // Admin command opcodes. Defined in NVMe Base Specification 2.0b, Figure 138.
