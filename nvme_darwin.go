@@ -1,6 +1,7 @@
 package smart
 
 // #cgo darwin LDFLAGS: -framework IOKit -framework CoreFoundation
+// #include <stdlib.h>
 // #include "nvme_darwin.h"
 import "C"
 
@@ -17,8 +18,10 @@ type NVMeDevice struct {
 
 func OpenNVMe(name string) (*NVMeDevice, error) {
 	dev := NVMeDevice{}
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
 
-	if res := C.smart_nvme_open_darwin(C.CString(name), &dev.ptr); res != 0 {
+	if res := C.smart_nvme_open_darwin(cName, &dev.ptr); res != 0 {
 		return nil, fmt.Errorf("open darwin device error: 0x%x", res)
 	}
 
