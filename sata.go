@@ -26,6 +26,14 @@ const (
 	_SMART_RETURN_STATUS   = 0xda
 )
 
+func checksum(data []byte) bool {
+	var sum byte
+	for _, b := range data {
+		sum += b
+	}
+	return sum == 0
+}
+
 // AtaIdentifyDevice ATA IDENTIFY DEVICE struct. ATA8-ACS defines this as a page of 16-bit words.
 // Some fields span multiple words (e.g., model number). Some fields use less than a
 // single word, and are bitmasked together with other fields. Since many of the fields are now

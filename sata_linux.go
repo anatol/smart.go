@@ -209,11 +209,3 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 
 	return &page, nil
 }
-
-func checksum(data []byte) bool {
-	var sum byte
-	for _, b := range data {
-		sum += b
-	}
-	return sum == 0
-}

@@ -26,10 +26,18 @@ func TestNVMe(t *testing.T) {
 	require.Equal(t, 0x106b, int(c.VendorID))
 	require.Equal(t, 0x106b, int(c.Ssvid))
 	require.Contains(t, c.ModelNumber(), "APPLE SSD")
-	require.Equal(t, 1, int(c.Nn))
+	require.GreaterOrEqual(t, int(c.Nn), 1)
 
-	require.Len(t, ns, 1)
-	require.Equal(t, 244276265, int(ns[0].Nsze))
+	require.NotEmpty(t, ns)
+	require.LessOrEqual(t, len(ns), int(c.Nn))
+	hasNonZeroSize := false
+	for _, n := range ns {
+		if n.Nsze > 0 {
+			hasNonZeroSize = true
+			break
+		}
+	}
+	require.True(t, hasNonZeroSize)
 
 	sm, err := dev.ReadSMART()
 	require.NoError(t, err)

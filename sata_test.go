@@ -141,7 +141,7 @@ func TestParseAsTemperatureTemp10X(t *testing.T) {
 	attr := AtaSmartAttr{Type: AtaDeviceAttributeTypeTemp10X, ValueRaw: 250}
 	val, low, hi, extra, err := attr.ParseAsTemperature()
 	require.NoError(t, err)
-	require.Equal(t, 25, val)  // 250 / 10
+	require.Equal(t, 25, val) // 250 / 10
 	require.Equal(t, 0, low)
 	require.Equal(t, 0, hi)
 	require.Equal(t, 0, extra)
