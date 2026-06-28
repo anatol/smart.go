@@ -2,6 +2,7 @@ package smart
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"maps"
 	"regexp"
@@ -512,6 +513,43 @@ type AtaSmartLogDirectory struct {
 		NumPages byte
 		_        byte // Reserved
 	}
+}
+
+// AtaDeviceStatistics is a parsed view of the ATA Device Statistics log
+// (General Purpose Log 04h, read via SataDevice.ReadDeviceStatistics). The log
+// is organized into 512-byte pages; each statistic is an 8-byte little-endian
+// field identified by its page number and byte offset within the page. The most
+// significant byte holds the field flags (bit 7 "supported", bit 6 "valid"); the
+// low 7 bytes hold the value. See ACS-4 section 9.5.
+type AtaDeviceStatistics struct {
+	raw []byte // the device statistics log payload (8 sectors)
+}
+
+// Get returns the value of the device statistic at the given page number and
+// byte offset within that page, together with whether it is present. ok is false
+// when the field is out of range, unsupported, or marked invalid by the device.
+// For example, Get(0x07, 0x008) reads the Solid State Device Statistics
+// "Percentage Used Endurance Indicator".
+func (s *AtaDeviceStatistics) Get(page uint8, offset uint16) (value uint64, ok bool) {
+	start := int(page)*512 + int(offset)
+	if start < 0 || start+8 > len(s.raw) {
+		return 0, false
+	}
+	field := binary.LittleEndian.Uint64(s.raw[start : start+8])
+	const flagSupported, flagValid = 1 << 63, 1 << 62 // most-significant byte
+	if field&flagSupported == 0 || field&flagValid == 0 {
+		return 0, false
+	}
+	return field & (1<<56 - 1), true // low 7 bytes
+}
+
+// PercentUsedEndurance returns the Solid State Device Statistics "Percentage Used
+// Endurance Indicator" (page 07h, offset 008h): the approximate percentage of the
+// device's rated write endurance that has been consumed (0 = new; the value may
+// exceed 100). ok is false if the device does not report it.
+func (s *AtaDeviceStatistics) PercentUsedEndurance() (percent uint8, ok bool) {
+	v, ok := s.Get(0x07, 0x008)
+	return uint8(v), ok
 }
 
 // SMART log address 01h
