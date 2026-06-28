@@ -37,3 +37,7 @@ func (d *SataDevice) ReadSMARTSelfTestLog() (*AtaSmartSelfTestLog, error) {
 func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 	return nil, ErrOSUnsupported
 }
+
+func (d *SataDevice) ReadDeviceStatistics() ([]byte, error) {
+	return nil, ErrOSUnsupported
+}

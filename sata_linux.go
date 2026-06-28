@@ -209,3 +209,27 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 
 	return &page, nil
 }
+
+// ReadDeviceStatistics reads the ATA Device Statistics log (GP Log 0x04) and
+// returns its raw multi-sector payload (8 sectors = 4096 bytes). The caller
+// parses the desired statistic, e.g. the Solid State Device Statistics page
+// (page 0x07) "Percentage Used Endurance Indicator" at page offset 0x008.
+func (d *SataDevice) ReadDeviceStatistics() ([]byte, error) {
+	const sectors = 8
+	respBuf := make([]byte, 512*sectors)
+
+	cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
+	cdb[1] = 0x08            // ATA protocol (4 << 1, PIO data-in)
+	cdb[2] = 0x0e            // BYT_BLOK = 1, T_LENGTH = 2, T_DIR = 1
+	cdb[4] = _SMART_READ_LOG // feature LSB
+	cdb[6] = sectors         // sector count: transfer 8 sectors (4096 bytes)
+	cdb[8] = 0x04            // log address: Device Statistics log
+	cdb[10] = 0x4f           // LBA mid: SMART signature byte 0x4F
+	cdb[12] = 0xc2           // LBA high: SMART signature byte 0xC2
+	cdb[14] = _ATA_SMART     // command
+
+	if err := scsiSendCdb(d.fd, cdb[:], respBuf); err != nil {
+		return nil, fmt.Errorf("scsiSendCdb SMART READ LOG (device statistics): %w", err)
+	}
+	return respBuf, nil
+}
