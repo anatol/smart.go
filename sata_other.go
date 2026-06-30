@@ -38,6 +38,6 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 	return nil, ErrOSUnsupported
 }
 
-func (d *SataDevice) ReadDeviceStatistics() (*AtaDeviceStatistics, error) {
+func (d *SataDevice) ReadStatistics() (*AtaDeviceStatistics, error) {
 	return nil, ErrOSUnsupported
 }

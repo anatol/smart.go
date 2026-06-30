@@ -210,11 +210,10 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 	return &page, nil
 }
 
-// ReadDeviceStatistics reads and parses the ATA Device Statistics log (General
+// ReadStatistics reads and parses the ATA Device Statistics log (General
 // Purpose Log 04h). Individual statistics are read from the returned value via
-// AtaDeviceStatistics.Get (or a convenience accessor such as PercentUsedEndurance),
-// honoring each field's supported/valid flags.
-func (d *SataDevice) ReadDeviceStatistics() (*AtaDeviceStatistics, error) {
+// AtaDeviceStatistics.Get, honoring each field's supported/valid flags.
+func (d *SataDevice) ReadStatistics() (*AtaDeviceStatistics, error) {
 	const sectors = 8
 	respBuf := make([]byte, 512*sectors)
 

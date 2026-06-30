@@ -11,18 +11,12 @@ func TestAtaDeviceStatistics(t *testing.T) {
 
 	// Solid State Device Statistics page (07h), "Percentage Used Endurance
 	// Indicator" at offset 008h.
-	const ssdEndurance = 0x07*512 + 0x008
-
 	buf := make([]byte, 8*512)
-	buf[ssdEndurance] = 51     // value (low byte)
-	buf[ssdEndurance+7] = 0xC0 // flags: supported | valid
+	buf[StatPercentageUsedEndurance] = 51     // value (low byte)
+	buf[StatPercentageUsedEndurance+7] = 0xC0 // flags: supported | valid
 	s := &AtaDeviceStatistics{raw: buf}
 
-	pct, ok := s.PercentUsedEndurance()
-	require.True(t, ok)
-	require.Equal(t, uint8(51), pct)
-
-	v, ok := s.Get(0x07, 0x008)
+	v, ok := s.Get(StatPercentageUsedEndurance)
 	require.True(t, ok)
 	require.Equal(t, uint64(51), v)
 
@@ -32,18 +26,18 @@ func TestAtaDeviceStatistics(t *testing.T) {
 	gen[general] = 0x34
 	gen[general+1] = 0x12
 	gen[general+7] = 0xC0 // supported | valid
-	mv, ok := (&AtaDeviceStatistics{raw: gen}).Get(0x01, 0x010)
+	mv, ok := (&AtaDeviceStatistics{raw: gen}).Get(general)
 	require.True(t, ok)
 	require.Equal(t, uint64(0x1234), mv)
 
 	// Supported but not valid -> not present.
 	inv := make([]byte, 8*512)
-	inv[ssdEndurance] = 51
-	inv[ssdEndurance+7] = 0x80 // supported only
-	_, ok = (&AtaDeviceStatistics{raw: inv}).PercentUsedEndurance()
+	inv[StatPercentageUsedEndurance] = 51
+	inv[StatPercentageUsedEndurance+7] = 0x80 // supported only
+	_, ok = (&AtaDeviceStatistics{raw: inv}).Get(StatPercentageUsedEndurance)
 	require.False(t, ok)
 
 	// Out of range -> not present.
-	_, ok = (&AtaDeviceStatistics{raw: make([]byte, 100)}).Get(0x07, 0x008)
+	_, ok = (&AtaDeviceStatistics{raw: make([]byte, 100)}).Get(StatPercentageUsedEndurance)
 	require.False(t, ok)
 }
