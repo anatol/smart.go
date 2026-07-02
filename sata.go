@@ -531,15 +531,15 @@ type AtaDeviceStatistics struct {
 // Device Statistics log (the page number times 512, plus the field's offset
 // within the page), for use with AtaDeviceStatistics.Get.
 const (
-	// StatPercentageUsedEndurance is the Solid State Device Statistics
+	// AtaStatPercentageUsedEndurance is the Solid State Device Statistics
 	// "Percentage Used Endurance Indicator" (page 07h, offset 008h; ACS-4
 	// 9.5.7.3): an approximate percentage of the device's rated write endurance
 	// that has been consumed (0 = new; the value may exceed 100).
-	StatPercentageUsedEndurance = 0x07*512 + 0x008
+	AtaStatPercentageUsedEndurance = 0x07*512 + 0x008
 )
 
 // Get returns the value of the device statistic at the given byte offset from
-// the start of the log (for example StatPercentageUsedEndurance), together with
+// the start of the log (for example AtaStatPercentageUsedEndurance), together with
 // whether it is present. ok is false when the offset is out of range, or the
 // field is unsupported or marked invalid by the device.
 func (s *AtaDeviceStatistics) Get(offset int) (value uint64, ok bool) {
