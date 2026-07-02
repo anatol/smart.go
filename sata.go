@@ -2,6 +2,7 @@ package smart
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"maps"
 	"regexp"
@@ -512,6 +513,45 @@ type AtaSmartLogDirectory struct {
 		NumPages byte
 		_        byte // Reserved
 	}
+}
+
+// AtaDeviceStatistics is a parsed view of the ATA Device Statistics log
+// (General Purpose Log 04h, read via SataDevice.ReadStatistics). The log is
+// organized into 512-byte pages; each statistic is an 8-byte little-endian field
+// addressed by its byte offset from the start of the log (the page number times
+// 512, plus the field's offset within the page). The most significant byte holds
+// the field flags (bit 7 "supported", bit 6 "valid"); the low 7 bytes hold the
+// value. See the Device Statistics log in ACS-4 (T13/BSR INCITS 529) 9.5; the
+// same content is in the freely available ACS-3 working draft (T13/2161) Annex A.5.
+type AtaDeviceStatistics struct {
+	raw []byte // the device statistics log payload (8 sectors)
+}
+
+// Device statistic offsets, expressed as the byte offset from the start of the
+// Device Statistics log (the page number times 512, plus the field's offset
+// within the page), for use with AtaDeviceStatistics.Get.
+const (
+	// AtaStatPercentageUsedEndurance is the Solid State Device Statistics
+	// "Percentage Used Endurance Indicator" (page 07h, offset 008h; ACS-4
+	// 9.5.7.3): an approximate percentage of the device's rated write endurance
+	// that has been consumed (0 = new; the value may exceed 100).
+	AtaStatPercentageUsedEndurance = 0x07*512 + 0x008
+)
+
+// Get returns the value of the device statistic at the given byte offset from
+// the start of the log (for example AtaStatPercentageUsedEndurance), together with
+// whether it is present. ok is false when the offset is out of range, or the
+// field is unsupported or marked invalid by the device.
+func (s *AtaDeviceStatistics) Get(offset int) (value uint64, ok bool) {
+	if offset < 0 || offset+8 > len(s.raw) {
+		return 0, false
+	}
+	field := binary.LittleEndian.Uint64(s.raw[offset : offset+8])
+	const flagSupported, flagValid = 1 << 63, 1 << 62 // most-significant byte
+	if field&flagSupported == 0 || field&flagValid == 0 {
+		return 0, false
+	}
+	return field & (1<<56 - 1), true // low 7 bytes
 }
 
 // SMART log address 01h
