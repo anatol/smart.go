@@ -531,6 +531,42 @@ type AtaDeviceStatistics struct {
 // Device Statistics log (the page number times 512, plus the field's offset
 // within the page), for use with AtaDeviceStatistics.Get.
 const (
+	// AtaStatLifetimePowerOnResets is the General Statistics "Lifetime Power-On
+	// Resets" (page 01h, offset 008h): the number of power-on events over the
+	// life of the device.
+	AtaStatLifetimePowerOnResets = 0x01*512 + 0x008
+
+	// AtaStatPowerOnHours is the General Statistics "Power-on Hours"
+	// (page 01h, offset 010h): the number of power-on hours over the life of
+	// the device.
+	AtaStatPowerOnHours = 0x01*512 + 0x010
+
+	// AtaStatLogicalSectorsWritten is the General Statistics "Logical Sectors
+	// Written" (page 01h, offset 018h): the number of logical sectors written
+	// over the life of the device.
+	AtaStatLogicalSectorsWritten = 0x01*512 + 0x018
+
+	// AtaStatLogicalSectorsRead is the General Statistics "Logical Sectors
+	// Read" (page 01h, offset 028h): the number of logical sectors read over
+	// the life of the device.
+	AtaStatLogicalSectorsRead = 0x01*512 + 0x028
+
+	// AtaStatReportedUncorrectableErrors is the General Errors Statistics
+	// "Number of Reported Uncorrectable Errors" (page 04h, offset 008h): the
+	// number of errors reported as uncorrectable over the life of the device.
+	AtaStatReportedUncorrectableErrors = 0x04*512 + 0x008
+
+	// AtaStatCurrentTemperature is the Temperature Statistics "Current
+	// Temperature" (page 05h, offset 008h) in degrees Celsius. Unlike the
+	// counters above, this statistic is signed: convert the low byte of the
+	// returned value with int8(uint8(v)) instead of using it as a uint64.
+	AtaStatCurrentTemperature = 0x05*512 + 0x008
+
+	// AtaStatInterfaceCRCErrors is the Transport Statistics "Number of
+	// Interface CRC Errors" (page 06h, offset 018h): the number of interface
+	// CRC errors detected over the life of the device.
+	AtaStatInterfaceCRCErrors = 0x06*512 + 0x018
+
 	// AtaStatPercentageUsedEndurance is the Solid State Device Statistics
 	// "Percentage Used Endurance Indicator" (page 07h, offset 008h; ACS-4
 	// 9.5.7.3): an approximate percentage of the device's rated write endurance

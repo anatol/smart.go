@@ -21,12 +21,11 @@ func TestAtaDeviceStatistics(t *testing.T) {
 	require.Equal(t, uint64(51), v)
 
 	// Multi-byte value: the flags byte must be stripped from the result.
-	const general = 0x01*512 + 0x010
 	gen := make([]byte, 8*512)
-	gen[general] = 0x34
-	gen[general+1] = 0x12
-	gen[general+7] = 0xC0 // supported | valid
-	mv, ok := (&AtaDeviceStatistics{raw: gen}).Get(general)
+	gen[AtaStatPowerOnHours] = 0x34
+	gen[AtaStatPowerOnHours+1] = 0x12
+	gen[AtaStatPowerOnHours+7] = 0xC0 // supported | valid
+	mv, ok := (&AtaDeviceStatistics{raw: gen}).Get(AtaStatPowerOnHours)
 	require.True(t, ok)
 	require.Equal(t, uint64(0x1234), mv)
 
