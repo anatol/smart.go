@@ -21,6 +21,9 @@ func TestScsi(t *testing.T) {
 	require.NoError(t, err)
 	defer dev.Close()
 
+	requireCloexec(t, path)
+	requireReadOnly(t, path)
+
 	c, err := dev.Capacity()
 	require.NoError(t, err)
 	require.Equal(t, 0x2800000, int(c))
