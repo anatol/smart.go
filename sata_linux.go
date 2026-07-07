@@ -9,7 +9,7 @@ import (
 )
 
 func OpenSata(name string) (*SataDevice, error) {
-	fd, err := unix.Open(name, unix.O_RDONLY, 0o600)
+	fd, err := unix.Open(name, unix.O_RDONLY|unix.O_CLOEXEC, 0o600)
 	if err != nil {
 		return nil, err
 	}
