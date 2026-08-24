@@ -196,7 +196,22 @@ type sgIoV4 struct {
 }
 
 func scsiSendCdb(fd int, cdb []byte, respBuf []byte) error {
-	senseBuf := make([]byte, 32)
+	_, err := scsiSendCdbSense(fd, cdb, respBuf)
+	return err
+}
+
+func scsiSendCdbSense(fd int, cdb []byte, respBuf []byte) ([]byte, error) {
+	senseBuf := make([]byte, _scsiSenseBufSize)
+
+	// A nil (or empty) respBuf means the command transfers no data (e.g. ATA
+	// CHECK POWER MODE). In that case use SG_DXFER_NONE with a NULL data
+	// pointer, as required for non-data commands by the sg driver.
+	dxferDirection := int32(_SG_DXFER_NONE)
+	var dxferp uintptr
+	if len(respBuf) > 0 {
+		dxferDirection = _SG_DXFER_FROM_DEV
+		dxferp = uintptr(unsafe.Pointer(&respBuf[0]))
+	}
 
 	/*
 		// TODO: make it work with sg_io_v4 data structure
@@ -214,27 +229,33 @@ func scsiSendCdb(fd int, cdb []byte, respBuf []byte) error {
 
 	hdr := sgIoHdr{
 		interfaceId:    'S',
-		dxferDirection: _SG_DXFER_FROM_DEV,
+		dxferDirection: dxferDirection,
 		timeout:        _DEFAULT_TIMEOUT,
 		cmdLen:         uint8(len(cdb)),
 		mxSbLen:        uint8(len(senseBuf)),
 		dxferLen:       uint32(len(respBuf)),
-		dxferp:         uintptr(unsafe.Pointer(&respBuf[0])),
+		dxferp:         dxferp,
 		cmdp:           uintptr(unsafe.Pointer(&cdb[0])),
 		sbp:            uintptr(unsafe.Pointer(&senseBuf[0])),
 	}
 
 	if err := ioctl(uintptr(fd), _SG_IO, uintptr(unsafe.Pointer(&hdr))); err != nil {
-		return err
+		return nil, err
+	}
+
+	if hdr.status == _SAM_STAT_CHECK_CONDITION && hdr.sbLenWr > 0 {
+		// CHECK CONDITION with sense data present. The caller decides whether
+		// the sense indicates a real error or just carries ATA registers.
+		return senseBuf[:hdr.sbLenWr], nil
 	}
 
 	// SG_INFO_OK_MASK masks the low 3 bits of info; SG_INFO_OK (0) means no error.
 	if hdr.info&_SG_INFO_OK_MASK != _SG_INFO_OK {
-		return sgioError{
+		return nil, sgioError{
 			deviceStatus: uint32(hdr.status),
 			hostStatus:   uint32(hdr.hostStatus),
 			driverStatus: uint32(hdr.driverStatus),
 		}
 	}
-	return nil
+	return senseBuf, nil
 }

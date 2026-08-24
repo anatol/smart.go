@@ -90,5 +90,17 @@ fmt.Println("Power Cycles count ", a.PowerCycles)
 fmt.Println("Power On Hours ", a.PowerOnHours)
 ```
 
+SATA drives can report their current power state (whether the platters are spinning or the drive is in standby). The underlying ATA CHECK POWER MODE command never spins up a spun-down drive, so it is safe to call at any time.
+
+```go
+dev, err := smart.OpenSata("/dev/sda")
+require.NoError(t, err)
+defer dev.Close()
+
+mode, err := dev.CheckPowerMode()
+require.NoError(t, err)
+fmt.Println("Power mode: ", mode) // "active or idle", "idle" or "standby"
+```
+
 ### Credit
 This project is inspired by https://github.com/dswarbrick/smart

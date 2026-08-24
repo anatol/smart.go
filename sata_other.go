@@ -41,3 +41,7 @@ func (d *SataDevice) readSMARTThresholds() (*AtaSmartThresholdsPageRaw, error) {
 func (d *SataDevice) ReadStatistics() (*AtaDeviceStatistics, error) {
 	return nil, ErrOSUnsupported
 }
+
+func (d *SataDevice) CheckPowerMode() (AtaPowerMode, error) {
+	return 0, ErrOSUnsupported
+}

@@ -141,4 +141,20 @@ func TestSata(t *testing.T) {
 	test, err := dev.ReadSMARTSelfTestLog()
 	require.NoError(t, err)
 	fmt.Printf("%+v\n", test)
+
+	// CHECK POWER MODE never spins up a spun-down drive, so it is safe to
+	// call at any time. Cross-check the reported state with
+	// `smartctl --nocheck=standby -a <path>`.
+	mode, err := dev.CheckPowerMode()
+	require.NoError(t, err)
+	fmt.Println("Power mode: ", mode)
+	require.Contains(t, []smart.AtaPowerMode{
+		smart.AtaPowerModeStandby,
+		smart.AtaPowerModeStandbyY,
+		smart.AtaPowerModeIdle,
+		smart.AtaPowerModeIdleA,
+		smart.AtaPowerModeIdleB,
+		smart.AtaPowerModeIdleC,
+		smart.AtaPowerModeActiveOrIdle,
+	}, mode)
 }
