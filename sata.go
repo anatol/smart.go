@@ -338,17 +338,24 @@ type AtaIdentifyDevice struct {
 	_                   [33]uint16 // ...
 } // 512 bytes
 
-func (a *AtaIdentifyDevice) IsGeneralPurposeLoggingCapable() bool {
-	// Per ATA spec, words 84/87 bits 15:14 must be 0b01 to indicate that the word
-	// contains valid data (bit 14 set, bit 15 cleared). Bit 5 indicates GPL support.
-	enabled := uint16(1) << 14
-	enabledMask := uint16(0b11) << 14
-	glLoggingAttr := uint16(1) << 5
+// isWordSignatureValid reports the validity signature of an IDENTIFY word: bits 15:14
+// must be 0b01 (bit 14 set, bit 15 cleared) for the word to contain valid data.
+func isWordSignatureValid(word uint16) bool {
+	const (
+		enabled     = uint16(1) << 14
+		enabledMask = uint16(0b11) << 14
+	)
+	return word&enabledMask == enabled
+}
 
-	if a.CommandsSupported3&enabledMask == enabled {
+func (a *AtaIdentifyDevice) IsGeneralPurposeLoggingCapable() bool {
+	// Bit 5 indicates GPL support.
+	const glLoggingAttr = uint16(1) << 5
+
+	if isWordSignatureValid(a.CommandsSupported3) {
 		return a.CommandsSupported3&glLoggingAttr != 0
 	}
-	if a.CommandsEnabled3&enabledMask == enabled {
+	if isWordSignatureValid(a.CommandsEnabled3) {
 		return a.CommandsEnabled3&glLoggingAttr != 0
 	}
 
@@ -357,6 +364,22 @@ func (a *AtaIdentifyDevice) IsGeneralPurposeLoggingCapable() bool {
 
 func (i *AtaIdentifyDevice) ModelNumber() string {
 	return fromAtaString(i.ModelNumberRaw[:])
+}
+
+func (i *AtaIdentifyDevice) EpcSupported() bool {
+	// Word 119 is valid when word 86 bit 15 is set and the word 119 signature is valid.
+	if i.CommandsEnabled2&0x8000 == 0 || !isWordSignatureValid(i.CommandsSupported4) {
+		return false
+	}
+	return i.CommandsSupported4&(1<<7) != 0
+}
+
+func (i *AtaIdentifyDevice) EpcEnabled() bool {
+	// Word 120 is valid when word 86 bit 15 is set and the word 120 signature is valid.
+	if i.CommandsEnabled2&0x8000 == 0 || !isWordSignatureValid(i.CommandsEnabled4) {
+		return false
+	}
+	return i.CommandsEnabled4&(1<<7) != 0
 }
 
 func (i *AtaIdentifyDevice) SerialNumber() string {

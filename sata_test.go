@@ -173,6 +173,61 @@ func TestIsGeneralPurposeLoggingCapable(t *testing.T) {
 	require.False(t, id.IsGeneralPurposeLoggingCapable())
 }
 
+func TestEpcSupported(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Word 86 bit 15 not set → word 119 invalid → false, even with the bit set.
+	id.CommandsSupported4 = 0x4080
+	require.False(t, id.EpcSupported())
+
+	// Validity signature present (word 86 bit 15, word 119 bits 15:14 = 0b01)
+	// but EPC bit 7 clear → false.
+	id.CommandsEnabled2 = 0x8000
+	id.CommandsSupported4 = 0x4000
+	require.False(t, id.EpcSupported())
+
+	// EPC bit 7 set with valid signature → true.
+	id.CommandsSupported4 = 0x4080
+	require.True(t, id.EpcSupported())
+
+	// Wrong signature bits 15:14 (all ones) → invalid word → false.
+	id.CommandsSupported4 = 0xff80
+	require.False(t, id.EpcSupported())
+
+	// All-zero word → false.
+	id.CommandsSupported4 = 0x0000
+	require.False(t, id.EpcSupported())
+}
+
+func TestEpcEnabled(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Word 86 bit 15 not set → word 120 invalid → false.
+	id.CommandsEnabled4 = 0x4080
+	require.False(t, id.EpcEnabled())
+
+	// Valid signature but EPC bit 7 clear → false.
+	id.CommandsEnabled2 = 0x8000
+	id.CommandsEnabled4 = 0x4000
+	require.False(t, id.EpcEnabled())
+
+	// EPC bit 7 set with valid signature → true.
+	id.CommandsEnabled4 = 0x4080
+	require.True(t, id.EpcEnabled())
+
+	// Wrong signature bits 15:14 (all ones) → invalid word → false.
+	id.CommandsEnabled4 = 0xff80
+	require.False(t, id.EpcEnabled())
+
+	// All-zero word → false.
+	id.CommandsEnabled4 = 0x0000
+	require.False(t, id.EpcEnabled())
+}
+
 func TestWWN(t *testing.T) {
 	t.Parallel()
 

@@ -48,6 +48,12 @@ const (
 	// bit. The remaining 7 bits encode the sense data format.
 	_SCSI_SENSE_RESPONSE_CODE_MASK = 0x7f
 
+	// Like _SCSI_SENSE_RESPONSE_CODE_MASK, but also strips bit 1, which says
+	// whether the sense data answers the current command (70h/72h) or a
+	// deferred one (71h/73h). Masking with 0x7e makes both cases compare
+	// equal to the format constants below.
+	_SCSI_SENSE_FORMAT_MASK = 0x7e
+
 	// Sense data formats (response code, lower 7 bits)
 	_SCSI_SENSE_FIXED_FORMAT      = 0x70
 	_SCSI_SENSE_DESCRIPTOR_FORMAT = 0x72

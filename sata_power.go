@@ -1,9 +1,65 @@
 package smart
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // ATA power management commands
-const _ATA_CHECK_POWER_MODE = 0xe5
+const (
+	_ATA_CHECK_POWER_MODE  = 0xe5
+	_ATA_STANDBY_IMMEDIATE = 0xe0
+	_ATA_IDLE_IMMEDIATE    = 0xe1
+	_ATA_STANDBY           = 0xe2
+	_ATA_IDLE              = 0xe3
+	_ATA_SLEEP             = 0xe6
+	_ATA_SET_FEATURES      = 0xef
+)
+
+// SET FEATURES subcommands (feature register values)
+const (
+	_ATA_SETFEATURES_EN_APM  = 0x05 // APM level in the count register
+	_ATA_SETFEATURES_DIS_APM = 0x85
+	_ATA_SETFEATURES_EPC     = 0x4a // Extended Power Conditions subcommand
+)
+
+// SET FEATURES EPC subcommand codes (LBA field bits 3:0)
+const (
+	_ATA_EPC_SUBCMD_GO_TO_POWER_CONDITION = 0x1
+)
+
+// SET FEATURES power condition IDs (count register, ACS-3 Table 112)
+const (
+	_ATA_POWER_CONDITION_STANDBY_Z = 0x00
+	_ATA_POWER_CONDITION_STANDBY_Y = 0x01
+	_ATA_POWER_CONDITION_IDLE_A    = 0x81
+	_ATA_POWER_CONDITION_IDLE_B    = 0x82
+	_ATA_POWER_CONDITION_IDLE_C    = 0x83
+)
+
+// IDLE IMMEDIATE with Unload feature (ACS-3 Table 54): feature 0x44,
+// count 0x00, LBA 055_4E4Ch ('L','N','U' in lba low/mid/high).
+const (
+	_ATA_IDLE_UNLOAD_FEATURE = 0x44
+	_ATA_IDLE_UNLOAD_LBA_LOW = 0x4c
+	_ATA_IDLE_UNLOAD_LBA_MID = 0x4e
+	_ATA_IDLE_UNLOAD_LBA_HGH = 0x55
+)
+
+// ATA status register bits (ACS-3 Table 18)
+const (
+	_ATA_STATUS_BUSY = 1 << 7
+	_ATA_STATUS_DRDY = 1 << 6
+	_ATA_STATUS_DF   = 1 << 5
+	_ATA_STATUS_DSC  = 1 << 4
+	_ATA_STATUS_DRQ  = 1 << 3
+	_ATA_STATUS_ERR  = 1 << 0
+)
+
+// ATA error register bits (ACS-3 Table 19)
+const (
+	_ATA_ERROR_ABORT = 1 << 2
+)
 
 // AtaPowerMode represents the power state of an ATA drive as reported by the
 // CHECK POWER MODE command.
@@ -44,19 +100,6 @@ const (
 	AtaPowerModeActiveOrIdle AtaPowerMode = 0xff
 )
 
-// Sense data layout constants
-const (
-	senseHeaderLen = 8
-	descHeaderLen  = 2
-
-	// Minimum length of a fixed format sense buffer carrying the ATA
-	// registers (offsets 3..11). Responses shorter than the full 18-byte
-	// frame are legal: the transferred amount is bounded by the initiator's
-	// allocation length, and ADDITIONAL SENSE LENGTH (byte 7) keeps the
-	// data self-describing.
-	fixedSenseMinLen = 12
-)
-
 func (m AtaPowerMode) String() string {
 	switch m {
 	case AtaPowerModeStandby:
@@ -79,70 +122,42 @@ func (m AtaPowerMode) String() string {
 }
 
 // ataPowerModeFromSense extracts the power mode reported by CHECK POWER MODE
-// from the SCSI sense data returned by a SAT layer. With CK_COND set, the ATA
-// registers arrive either in descriptor format sense data (Linux libata) or
-// fixed format sense data (some USB bridges). The power state is carried in
-// the sector count register (ACS-3 Table 204).
+// from the SCSI sense data returned by a SAT layer. The power state is carried
+// in the sector count register (ACS-3 Table 204).
 // Note: Some USB bridges do not implement CK_COND and reject such commands.
 func ataPowerModeFromSense(sense []byte) (AtaPowerMode, error) {
-	if len(sense) < senseHeaderLen {
+	s := ataSense(sense)
+
+	if !s.HasResponseCode() {
 		return 0, fmt.Errorf("sense buffer too short (%d bytes)", len(sense))
 	}
 
-	// A successful CK_COND command reports RECOVERED_ERROR/00h,1Dh; anything
-	// else means the command failed and the descriptor may carry stale
-	// registers that must not be mistaken for a power mode.
-	if sense[0]&_SCSI_SENSE_RESPONSE_CODE_MASK == _SCSI_SENSE_DESCRIPTOR_FORMAT {
-		if sense[1] != _SCSI_SK_RECOVERED_ERROR || sense[2] != _SCSI_ASC_ATA_PT_INFO || sense[3] != _SCSI_ASCQ_ATA_PT_INFO {
-			return 0, fmt.Errorf("unexpected sense key/ASC/ASCQ: %#02x/%#02x/%#02x", sense[1], sense[2], sense[3])
-		}
-	}
-
 	var nsect byte
-	var found bool
 
-	switch sense[0] & _SCSI_SENSE_RESPONSE_CODE_MASK {
-	case _SCSI_SENSE_DESCRIPTOR_FORMAT:
-		additionalLen := int(sense[7])
-		totalSenseLen := senseHeaderLen + additionalLen
-
-		if len(sense) < totalSenseLen {
-			return 0, fmt.Errorf("truncated descriptor format sense data: %d bytes, expected %d", len(sense), totalSenseLen)
+	switch {
+	case s.IsDescriptorFormat():
+		if !ataSenseDescriptorFormat(sense).IsValid() {
+			return 0, fmt.Errorf("descriptor format sense buffer is inavalid (length: %d bytes)", len(sense))
 		}
-
-		for offset := senseHeaderLen; offset < totalSenseLen; {
-			code := sense[offset]
-			if offset+descHeaderLen > totalSenseLen {
-				return 0, fmt.Errorf("truncated sense descriptor header at offset %d (code %#02x)", offset, code)
-			}
-			descPayloadLen := int(sense[offset+1])
-
-			if offset+descHeaderLen+descPayloadLen > totalSenseLen {
-				return 0, fmt.Errorf("truncated sense descriptor at offset %d (code %#02x, payload length %d)", offset, code, descPayloadLen)
-			}
-
-			if code == _SCSI_SENSE_DESC_ATA_RETURN && descPayloadLen >= 6 {
-				nsect = sense[offset+5] // sector count register
-				found = true
-				break
-			}
-
-			offset += descHeaderLen + descPayloadLen
+		if !s.IsAtaPassThroughInfo() {
+			return 0, fmt.Errorf("unexpected sense key/ASC/ASCQ: %#02x/%#02x/%#02x", s.SenseKey(), s.ASC(), s.ASCQ())
 		}
-	case _SCSI_SENSE_FIXED_FORMAT:
-		// Fixed register offsets: [3]=error, [4]=status, [5]=device,
-		// [6]=sector count, [9..11]=lba low/mid/high.
-		if len(sense) < fixedSenseMinLen {
-			return 0, fmt.Errorf("fixed format sense buffer too short (%d bytes)", len(sense))
+		desc, ok := findAtaReturnDescriptor(sense)
+		if !ok {
+			return 0, fmt.Errorf("no ATA Status Return descriptor in sense data")
 		}
-		nsect = sense[6]
-		found = true
+		nsect = desc.SectorCount()
+	case s.IsFixedFormat():
+		fixed := ataSenseFixedFormat(sense)
+		if !fixed.IsValid() {
+			return 0, fmt.Errorf("fixed format sense buffer is invalid (length: %d bytes)", len(fixed))
+		}
+		if !s.IsAtaPassThroughInfo() {
+			return 0, fmt.Errorf("unexpected sense key/ASC/ASCQ: %#02x/%#02x/%#02x", s.SenseKey(), s.ASC(), s.ASCQ())
+		}
+		nsect = fixed.SectorCount()
 	default:
-		return 0, fmt.Errorf("unsupported sense data format (response code %#02x)", sense[0])
-	}
-
-	if !found {
-		return 0, fmt.Errorf("no ATA Status Return descriptor in sense data")
+		return 0, fmt.Errorf("unsupported sense data format (response code %#02x)", s.ResponseCode())
 	}
 
 	switch powerMode := AtaPowerMode(nsect); powerMode {
@@ -152,5 +167,61 @@ func ataPowerModeFromSense(sense []byte) (AtaPowerMode, error) {
 		return powerMode, nil
 	default:
 		return 0, fmt.Errorf("unexpected sector count value in CHECK POWER MODE response: %#02x", nsect)
+	}
+}
+
+// encodeAtaSpinDownTimeout encodes d into the STANDBY/IDLE timer value
+// (ACS-3 Table 52). Only exactly representable durations are accepted:
+// 0, multiples of 5s up to 20m, or multiples of 30m up to 5h30m.
+func encodeAtaSpinDownTimeout(d time.Duration) (byte, error) {
+	switch {
+	case d == 0:
+		return 0, nil
+	case d < 0:
+		return 0, fmt.Errorf("duration %s cannot be negative", d)
+	case d <= 20*time.Minute && d%(5*time.Second) == 0:
+		return byte(d / (5 * time.Second)), nil
+	case d <= 5*time.Hour+30*time.Minute && d%(30*time.Minute) == 0:
+		return byte(d/(30*time.Minute)) + 240, nil
+	default:
+		return 0, fmt.Errorf("duration %s cannot be encoded as an ATA standby timer value (use 0, multiples of 5s up to 20m, or multiples of 30m up to 5h30m)", d)
+	}
+}
+
+// decodeAtaSpinDownTimeout decodes a STANDBY/IDLE timer value into a duration
+// (ACS-3 Table 52). Vendor-specific (0xfd) and reserved (0xfe) values return
+// a zero duration.
+func decodeAtaSpinDownTimeout(v byte) time.Duration {
+	switch {
+	case v == 0:
+		return 0
+	case v <= 240:
+		return time.Duration(v) * 5 * time.Second
+	case v <= 251:
+		return time.Duration(v-240) * 30 * time.Minute
+	case v == 252:
+		return 21 * time.Minute
+	case v == 255:
+		return 21*time.Minute + 15*time.Second
+	default: // 253 vendor-specific, 254 reserved
+		return 0
+	}
+}
+
+// powerConditionForMode maps an AtaPowerMode to the SET FEATURES power
+// condition ID that selects it. Only the EPC-only conditions (Standby_y,
+// Idle_a/b/c) are reachable this way; ok=false for the rest.
+func powerConditionForMode(m AtaPowerMode) (cond byte, ok bool) {
+	switch m {
+	case AtaPowerModeStandbyY:
+		return _ATA_POWER_CONDITION_STANDBY_Y, true
+	case AtaPowerModeIdleA:
+		return _ATA_POWER_CONDITION_IDLE_A, true
+	case AtaPowerModeIdleB:
+		return _ATA_POWER_CONDITION_IDLE_B, true
+	case AtaPowerModeIdleC:
+		return _ATA_POWER_CONDITION_IDLE_C, true
+	default:
+		return 0, false
 	}
 }
