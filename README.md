@@ -115,7 +115,8 @@ err := dev.Standby()
 err = dev.Idle()
 
 // Retract the heads to the ramp/landing zone; the drive stays spinning in
-// Idle_a and reloads the heads on the next media access.
+// Idle_a and reloads the heads on the next media access. Requires the Unload
+// feature - check with Identify().UnloadSupported() first.
 err := dev.IdleUnload()
 
 // EPC-only conditions (Standby_y, Idle_a/b/c) via SET FEATURES; requires
@@ -143,16 +144,20 @@ err := dev.SetAPMLevel(128)
 err = dev.DisableAPM()
 ```
 
-APM status comes from the IDENTIFY DEVICE data - there is no ATA command for
-it. Re-issue Identify() after SetAPMLevel/DisableAPM to see the updated value;
-the level is only meaningful while APM is enabled.
+APM status comes from the IDENTIFY DEVICE data (no ATA command reads it), and
+the level is only meaningful while APM is enabled; re-issue Identify() after
+SetAPMLevel/DisableAPM to see the new value. The same data tells you which
+optional features the drive implements, so skip commands for unsupported ones:
 
 ```go
 i, err := dev.Identify()
 require.NoError(t, err)
-fmt.Println("APM supported: ", i.ApmSupported())
-fmt.Println("APM enabled:   ", i.ApmEnabled())
-fmt.Println("APM level:     ", i.CurrentApmLevel()) // 1..254
+fmt.Println("APM supported:    ", i.ApmSupported())
+fmt.Println("APM enabled:      ", i.ApmEnabled())
+fmt.Println("APM level:        ", i.CurrentApmLevel()) // 1..254
+fmt.Println("EPC supported:    ", i.EpcSupported())
+fmt.Println("EPC enabled:      ", i.EpcEnabled())
+fmt.Println("Unload supported: ", i.UnloadSupported())
 ```
 
 `Sleep()` puts the drive into PM3:Sleep - the deepest state, from which **no
