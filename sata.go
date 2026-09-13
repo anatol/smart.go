@@ -406,6 +406,14 @@ func (i *AtaIdentifyDevice) CurrentApmLevel() uint8 {
 	return uint8(i.CurrentApmLevelRaw)
 }
 
+func (i *AtaIdentifyDevice) UnloadSupported() bool {
+	// Word 84 is valid only when its bits 15:14 == 0b01.
+	if !isWordSignatureValid(i.CommandsSupported3) {
+		return false
+	}
+	return i.CommandsSupported3&(1<<13) != 0
+}
+
 func (i *AtaIdentifyDevice) SerialNumber() string {
 	return fromAtaString(i.SerialNumberRaw[:])
 }

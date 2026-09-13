@@ -295,6 +295,32 @@ func TestCurrentApmLevel(t *testing.T) {
 	require.Equal(t, uint8(0x00), id.CurrentApmLevel())
 }
 
+func TestUnloadSupported(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Word 84 signature absent (bits 15:14 != 0b01) → false, even with bit 13 set.
+	id.CommandsSupported3 = 0x2000
+	require.False(t, id.UnloadSupported())
+
+	// Valid signature but UNLOAD SUPPORTED bit 13 clear → false.
+	id.CommandsSupported3 = 0x4000
+	require.False(t, id.UnloadSupported())
+
+	// Valid signature + bit 13 → true.
+	id.CommandsSupported3 = 0x6000
+	require.True(t, id.UnloadSupported())
+
+	// Wrong signature bits 15:14 (all ones) → invalid word → false.
+	id.CommandsSupported3 = 0xe000
+	require.False(t, id.UnloadSupported())
+
+	// All-zero word → false.
+	id.CommandsSupported3 = 0x0000
+	require.False(t, id.UnloadSupported())
+}
+
 func TestWWN(t *testing.T) {
 	t.Parallel()
 
