@@ -8,7 +8,7 @@ import (
 // ataNonDataCdb builds a 16-byte CDB for a non-data ATA PASS-THROUGH(16)
 // command with CK_COND set.
 func ataNonDataCdb(cmd byte) cdb16 {
-	cdb := cdb16{}
+	cdb := cdb16{_SCSI_ATA_PASSTHRU_16}
 	cdb[1] = 0x06 // ATA protocol: non-data
 	cdb[2] = 0x20 // CK_COND=1: report ATA registers via sense data
 	cdb[14] = cmd
