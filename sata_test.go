@@ -228,6 +228,73 @@ func TestEpcEnabled(t *testing.T) {
 	require.False(t, id.EpcEnabled())
 }
 
+func TestApmSupported(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Word 83 signature absent (bits 15:14 != 0b01) → false, even with bit 3 set.
+	id.CommandsSupported2 = 0x0008
+	require.False(t, id.ApmSupported())
+
+	// Valid signature but APM bit 3 clear → false.
+	id.CommandsSupported2 = 0x4000
+	require.False(t, id.ApmSupported())
+
+	// Valid signature + bit 3 → true.
+	id.CommandsSupported2 = 0x4008
+	require.True(t, id.ApmSupported())
+
+	// Wrong signature bits 15:14 (all ones) → invalid word → false.
+	id.CommandsSupported2 = 0xff08
+	require.False(t, id.ApmSupported())
+
+	// All-zero word → false.
+	id.CommandsSupported2 = 0x0000
+	require.False(t, id.ApmSupported())
+}
+
+func TestApmEnabled(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Word 86 bit 3 clear → false.
+	id.CommandsEnabled2 = 0x0000
+	require.False(t, id.ApmEnabled())
+
+	// Bit 3 set → true.
+	id.CommandsEnabled2 = 0x0008
+	require.True(t, id.ApmEnabled())
+
+	// Bit 15 (words 119..120 valid) must not affect the result: word 86 has
+	// no validity signature of its own.
+	id.CommandsEnabled2 = 0x8008
+	require.True(t, id.ApmEnabled())
+	id.CommandsEnabled2 = 0x8000
+	require.False(t, id.ApmEnabled())
+}
+
+func TestCurrentApmLevel(t *testing.T) {
+	t.Parallel()
+
+	var id AtaIdentifyDevice
+
+	// Low byte only; the high byte (reserved in ACS-3, 40h validity
+	// indicator in ATA8-APS) is ignored.
+	id.CurrentApmLevelRaw = 0x4080
+	require.Equal(t, uint8(0x80), id.CurrentApmLevel())
+
+	id.CurrentApmLevelRaw = 0x0055
+	require.Equal(t, uint8(0x55), id.CurrentApmLevel())
+
+	id.CurrentApmLevelRaw = 0xff80
+	require.Equal(t, uint8(0x80), id.CurrentApmLevel())
+
+	id.CurrentApmLevelRaw = 0x0000
+	require.Equal(t, uint8(0x00), id.CurrentApmLevel())
+}
+
 func TestWWN(t *testing.T) {
 	t.Parallel()
 

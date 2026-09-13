@@ -241,7 +241,12 @@ type AtaIdentifyDevice struct {
 	// bit 1 Ultra DMA mode 1 and below are supported.
 	// bit 0 Ultra DMA mode 0 is supported.
 	DMAModes uint16    // Word 88, Ultra DMA modes (see 7.12.6.42)
-	_        [4]uint16 // ...
+	_        [2]uint16 // ... (words 89..90)
+	// Current APM level (see 7.12.7)
+	// bit 7:0 Current APM level value.
+	// bit 15:8 Reserved (ATA8-APS defined 40h as a validity indicator).
+	CurrentApmLevelRaw uint16    // Word 91, current APM level
+	_                  [1]uint16 // ... (word 92)
 	// Hardware reset results (see 7.12.6.47)
 	// For SATA devices, word 93 shall be set to the value 0000h.
 	// bit 15 Shall be cleared to zero
@@ -380,6 +385,25 @@ func (i *AtaIdentifyDevice) EpcEnabled() bool {
 		return false
 	}
 	return i.CommandsEnabled4&(1<<7) != 0
+}
+
+func (i *AtaIdentifyDevice) ApmSupported() bool {
+	// Word 83 is valid only when its bits 15:14 == 0b01.
+	if !isWordSignatureValid(i.CommandsSupported2) {
+		return false
+	}
+	return i.CommandsSupported2&(1<<3) != 0
+}
+
+func (i *AtaIdentifyDevice) ApmEnabled() bool {
+	// Word 86 carries no validity signature of its own
+	return i.CommandsEnabled2&(1<<3) != 0
+}
+
+// CurrentApmLevel returns the current Advanced Power Management level.
+// The value is meaningful only when ApmEnabled reports true.
+func (i *AtaIdentifyDevice) CurrentApmLevel() uint8 {
+	return uint8(i.CurrentApmLevelRaw)
 }
 
 func (i *AtaIdentifyDevice) SerialNumber() string {

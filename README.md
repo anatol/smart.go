@@ -143,6 +143,18 @@ err := dev.SetAPMLevel(128)
 err = dev.DisableAPM()
 ```
 
+APM status comes from the IDENTIFY DEVICE data - there is no ATA command for
+it. Re-issue Identify() after SetAPMLevel/DisableAPM to see the updated value;
+the level is only meaningful while APM is enabled.
+
+```go
+i, err := dev.Identify()
+require.NoError(t, err)
+fmt.Println("APM supported: ", i.ApmSupported())
+fmt.Println("APM enabled:   ", i.ApmEnabled())
+fmt.Println("APM level:     ", i.CurrentApmLevel()) // 1..254
+```
+
 `Sleep()` puts the drive into PM3:Sleep - the deepest state, from which **no
 ATA command can wake it**. Recovery requires a hardware/software reset: a
 sysfs rescan (`echo 1 > /sys/block/sdX/device/delete` then
