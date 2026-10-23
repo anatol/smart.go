@@ -195,13 +195,38 @@ type sgIoV4 struct {
 	_ uint32 // padding
 }
 
+// sgIoBuffers are the buffers whose addresses are stored as integers in sgIoHdr.
+// The compiler does not see those addresses, so a stack buffer could be moved when the
+// goroutine stack grows and the kernel would use a stale address. The buffers are
+// therefore heap allocated, and referenced from a struct that stays in use until
+// the ioctl has returned (so they are not collected early either).
+type sgIoBuffers struct {
+	cdb   []byte
+	data  []byte
+	sense []byte
+}
+
+// newSgIoBuffers returns heap-allocated copies of cdb plus zeroed data and sense buffers.
+// It must not be inlined: the allocations only escape to the heap when they are
+// returned from a real call.
+//
+//go:noinline
+func newSgIoBuffers(cdb []byte, dataLen int) *sgIoBuffers {
+	return &sgIoBuffers{
+		cdb:   append([]byte(nil), cdb...),
+		data:  make([]byte, dataLen),
+		sense: make([]byte, _scsiSenseBufSize),
+	}
+}
+
 func scsiSendCdb(fd int, cdb []byte, respBuf []byte) error {
 	_, err := scsiSendCdbSense(fd, cdb, respBuf)
 	return err
 }
 
 func scsiSendCdbSense(fd int, cdb []byte, respBuf []byte) ([]byte, error) {
-	senseBuf := make([]byte, _scsiSenseBufSize)
+	bufs := newSgIoBuffers(cdb, len(respBuf))
+	senseBuf := bufs.sense
 
 	// A nil (or empty) respBuf means the command transfers no data (e.g. ATA
 	// CHECK POWER MODE). In that case use SG_DXFER_NONE with a NULL data
@@ -210,7 +235,7 @@ func scsiSendCdbSense(fd int, cdb []byte, respBuf []byte) ([]byte, error) {
 	var dxferp uintptr
 	if len(respBuf) > 0 {
 		dxferDirection = _SG_DXFER_FROM_DEV
-		dxferp = uintptr(unsafe.Pointer(&respBuf[0]))
+		dxferp = uintptr(unsafe.Pointer(&bufs.data[0]))
 	}
 
 	/*
@@ -235,11 +260,13 @@ func scsiSendCdbSense(fd int, cdb []byte, respBuf []byte) ([]byte, error) {
 		mxSbLen:        uint8(len(senseBuf)),
 		dxferLen:       uint32(len(respBuf)),
 		dxferp:         dxferp,
-		cmdp:           uintptr(unsafe.Pointer(&cdb[0])),
+		cmdp:           uintptr(unsafe.Pointer(&bufs.cdb[0])),
 		sbp:            uintptr(unsafe.Pointer(&senseBuf[0])),
 	}
 
-	if err := ioctl(uintptr(fd), _SG_IO, uintptr(unsafe.Pointer(&hdr))); err != nil {
+	err := ioctl(uintptr(fd), _SG_IO, unsafe.Pointer(&hdr))
+	copy(respBuf, bufs.data) // also keeps bufs (and the buffers it holds) reachable during the ioctl
+	if err != nil {
 		return nil, err
 	}
 

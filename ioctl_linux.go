@@ -1,6 +1,8 @@
 package smart
 
 import (
+	"unsafe"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -52,11 +54,29 @@ func iowr(t, nr, size uintptr) uintptr {
 	return ioc(directionWrite|directionRead, t, nr, size)
 }
 
-// ioctl executes an ioctl command on the specified file descriptor
-func ioctl(fd, cmd, ptr uintptr) error {
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, fd, cmd, ptr)
+// ioctl executes an ioctl command on the specified file descriptor.
+//
+// ptr is an unsafe.Pointer (not a uintptr) on purpose: it is converted to uintptr
+// inside the unix.Syscall call expression, which is the only form where the compiler
+// keeps the pointed-to object alive and valid for the duration of the call
+// (see rule (4) of the unsafe.Pointer documentation).
+func ioctl(fd, cmd uintptr, ptr unsafe.Pointer) error {
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, fd, cmd, uintptr(ptr))
 	if errno != 0 {
 		return errno
 	}
 	return nil
+}
+
+// heapBytes returns a zeroed byte slice that is always allocated on the heap.
+//
+// The kernel gets buffer addresses as plain integers inside command structs, which
+// the compiler does not track: a stack buffer could be moved when the goroutine stack
+// grows, leaving the kernel with a stale address. Heap objects never move.
+// Converting a pointer to uintptr does not make the object escape, but returning it
+// from a function that cannot be inlined does.
+//
+//go:noinline
+func heapBytes(n int) []byte {
+	return make([]byte, n)
 }
